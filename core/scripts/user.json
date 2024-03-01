@@ -1,0 +1,70 @@
+{
+    "COMMENT1": [
+	"This is a sample of the stream definition json which gives friendly names to user-defined stream configurations.",
+	"With the intention that the user can just refer to the config by name and the dancegraph plugin will fire up the stored",
+	"stream configuration. Currently the test implementation is in the tests, invoked by",
+
+	"'signal_producer_consumer --stream ZedToUnity'",
+
+	"or similar",
+
+	"These should be placed in the same directory as the dancegraph.json file",
+	"which, on Windows is %APPDATA%/DanceGraph (e.g. c:\\users\\FatherLiamFinnegan\\Appdata\\Roaming\\Dancegraph\\user.json)"
+    ],
+
+    "streams": {
+	"ZedToUnityFile": {
+	    "producer": "zed/camera",
+	    "config": ["zed/config"],
+	    "consumer": [
+		"generic/consumer_ipc",
+		"generic/dump2file"		
+	    ],
+
+	    "opts": {
+		"zed": {
+		},
+		"generic": {
+		}
+	    }
+	},
+	"ZedToUnityFileVideo" : {
+	    "producer": "zed/camera",
+	    "consumer": [ "generic/consumer_ipc", "generic/dump2file" ],
+	    "config": ["zed/config"],
+	    "opts": {
+		"zed": {
+		    "zedRecordVideo" : "Zed_Recording"
+		}
+	    }
+	},
+	"ZedToUnity" : {
+	    "producer": "zed/camera",
+	    "consumer": [ "generic/consumer_ipc" ],
+	    "config": ["zed/config"],
+	    "opts": {
+		"zed": {
+		}
+	    }
+	},
+	"NetToZedIPC" : {
+	    "producer": "net/recvzed",
+	    "consumer": [ "zed/ipc" ],
+	    "config": ["zed/config", "net/config"],
+	    "opts": {
+		"zed": {}
+	    }
+	},
+	"MicToUnity": {
+	    "producer": "mic/producer",
+	    "consumer": [
+		"mic/IPC"
+	    ],
+	    "config": ["mic/config"],
+	    "opts": {
+		"mic": {}
+	    }
+	}
+    }
+}
+

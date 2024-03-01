@@ -1,0 +1,6 @@
+[submodule "contrib/spdlog"]
+	path = contrib/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "contrib/BS_thread_pool"]
+	path = contrib/BS_thread_pool
+	url = https://github.com/bshoshany/thread-pool.git

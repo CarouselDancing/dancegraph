@@ -1,0 +1,267 @@
+{
+	"dll_folder": "./modules",
+	"networking": {
+		"connectionPing" :  20,
+		"connectionTimeout": 30
+	},
+	"scenes": {
+		"impulse_test": {
+			"user_roles": {
+				"impulse_test": {
+					"user_signals": [ { "name": "impulse/v1.0" } ]
+				}
+			}
+		},
+		"zed_testscene": {
+			"env_signals": [],
+			"user_roles": {
+				"dancer": {
+					"user_signals": [ { "name": "zed/v1.0" } ]
+				}
+			}
+		},
+		"zed4_testscene": {
+			"env_signals": [],
+			"user_roles": {
+				"dancer": {
+					"user_signals": [ { "name": "zed/v2.1" } ]
+				}
+			}
+		},
+		"env_testscene": {
+			"env_signals": [ "env/v1.0" ],
+			"user_roles": {
+				"dancer": {
+					"user_signals": [ { "name": "zed/v2.1" } ]
+				}
+			}
+		}
+
+	},
+
+	"generic_producers": {
+		"undumper": {
+			"v1.0": {
+				"dll": "undumper",
+				"opts": {}
+			}
+		},
+		"prod_ipc": {
+			"v1.0": {
+				"dll": "producer_ipc",
+				"opts": {
+					"ipcOutBufferName": "Dancegraph_Generic_In",
+					"ipcBufferEntries": 5
+
+				}
+			}
+		},
+		"null": {
+			"v1.0": {
+				"dll": "producer_null",
+				"opts": {
+				}
+			}
+		}
+
+	},
+	"generic_consumers": {
+		"printer": {
+			"v1.0": {
+				"dll": "consumer_printer",
+				"opts": {}
+
+			}
+		},
+		"dump2file": {
+			"v1.0": {
+				"dll": "consumer_dump2file",
+				"opts": {}
+			}
+		},
+		"ipc": {
+			"v1.0": {
+				"dll": "consumer_ipc",
+				"opts": {
+					"ipcBufferEntries": 5,
+					"ipcOutBufferName": "Dancegraph_IPC_Generic"
+
+				}
+			}
+		}
+	},
+	"transformers": {
+		"predict_simple": {
+			"v1.0": {
+				"dll": "zed_extrapolate",
+				"user_inputs": [ "zed/v2.1" ],
+				"env_inputs": [ "env/v1.0" ],
+				"output": "zed/v2.1",
+				"opts": {
+					"zed/v2.1": {
+						"signal_queue_size": 5
+					},
+					"env/v1.0": {
+						"signal_queue_size": 10
+					}
+				},
+				"local_output": true,
+				"network_output": false
+			}
+		},
+		"test_transformer": {
+			"v1.0": {
+				"dll": "zed_testxform",
+				"user_inputs": [ "zed/v2.1" ],
+				"env_inputs": [ "env/v1.0" ],
+				"output": "zed/v2.1",
+				"opts": {
+					"zed/v2.1": {
+						"signal_queue_size": 5
+					},
+					"env/v1.0": {
+						"signal_queue_size": 10
+					}
+				},
+				"local_output": true,
+				"network_output": false
+			}
+		}
+
+
+
+	},
+	"user_signals": {
+		"zed": {
+			"v1.0": {
+				"opts": {
+					"isReflexive": true,
+					"zedBufferReadRate": 30,
+					"zedBufferWriteRate": 30,
+					"zedConfidenceThreshold": 40,
+					"zedCoordinateSystem": "LEFT_HANDED_Y_UP",
+					"zedDepth": "ULTRA",
+					"zedFPS": 30,
+					"zedMaxBodyCount": 10,
+					"zedPlaybackRate": 1.0,
+					"zedRecordVideo": "",
+					"zedResolution": "1080"
+				},
+
+				"globalopts": {
+
+				},
+				"config": {
+					"dll": "zedcam_signal_config"
+				},
+				"producers": {
+					"default": {
+						"dll": "zedcam_producer"
+					},
+					"tpose": {
+						"dll": "zedcam_null"
+					}
+				},
+				"consumers": {
+					"default": {
+						"dll": "zedcam_consumer"
+					}
+				}
+			},
+			"v2.1": {
+				"opts": {
+					"isReflexive": true,
+					"zedBufferReadRate": 30,
+					"zedBufferWriteRate": 30,
+					"zedConfidenceThreshold": 60,
+					"zedCoordinateSystem": "LEFT_HANDED_Y_UP",
+					"zedDepth": "ULTRA",
+					"zedFPS": 60,
+					"zedMaxBodyCount": 10,
+					"zedPlaybackRate": 1.0,
+					"zedRecordVideo": "",
+					"zedResolution": "720",
+					"zedBodySignalType": "Body_34_KeypointsPlus",
+					"zedTrackingModel": "ACCURATE",
+					"zedSkeletonSmoothing": 0.7,
+					"zedKeypointsThreshold": 8,
+					"zedSVOInput": "",
+					"zedStaticCamera": true,
+					"zedAllowReducedPrecision": true,
+					"zedTimeTracking": false
+				},
+
+				"globalopts": {
+
+				},
+				"config": {
+					"dll": "zed_signal_config"
+				},
+				"producers": {
+					"default": {
+						"dll": "zed_producer"
+					},
+					"camera": {
+						"dll": "zed_producer"
+					},
+					"tpose": {
+						"dll": "zed_tpose"
+					}
+				},
+				"consumers": {
+					"default": {
+					}
+				}
+			}
+		},
+		"impulse": {
+			"v1.0": {
+				"config": {
+					"dll": "impulse_signal_config"
+				},
+				"opts": {
+					"datasize" :  4,
+					"interval_ms": 0,
+					"sleep_ms": 20,
+					"ipc": {
+						"name": "impulse_v1.0",
+						"numEntries": 100
+					}
+				},
+				"globalopts": {
+				},
+				"producers": {
+					"default": {
+						"dll": "impulse_signal_producer"
+					}
+				}
+			}
+		}
+	},
+	"env_signals": {
+		"env": {
+			"v1.0": {
+				"config": {
+					"dll": "env_config"
+				},
+				"opts": {
+					"ipcOutBufferName": "Dancegraph_Env_Out",
+					"ipcBufferEntries": 5
+				},
+				"producers": {
+					"default": {
+						"dll": "prod_ipc"
+					},
+					"env_test": {
+						"dll": "env_test"
+					}
+				},
+				"consumers": {
+
+				},
+				"globalopts": {
+				}
+			}
+		}
+	}
+}

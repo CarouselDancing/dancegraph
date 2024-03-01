@@ -1,0 +1,48 @@
+{
+    "signal_modules" : {
+        "sample_signal" : {
+            "producer" : "sample_signal_producer",
+            "config" : "sample_signal_config"
+        },
+		"test_scene_signal" : {
+            "producer" : "ipc_reader",
+            "config" : "ipc_reader_config"
+        }
+    },
+    "consumer_modules" : {
+        "dump2file" : "consumer_dump2file",
+        "printer" : "consumer_printer",
+		"sample_signal_consumer" : "sample_signal_consumer"
+    },
+	"adapters" : {
+		"unity-ipc" : {
+			"user_signal" : { 
+				"consumer" : "ipc_writer",
+				"adapter" : "unity_ipc_user"
+			},
+			"scene_to_env_signals" : {
+				"test" : {
+					"consumer" : "ipc_writer",
+					"adapter" : "unity_ipc_scene_test"
+				}
+			}
+		}
+	},
+    "scenes" : {
+        "test" : {
+            "user_roles" : {
+                "test_role" : {
+                    "user_signals" : ["sample_signal"],
+                    "env_signals" : ["test_scene_signal"]
+                }
+            }
+        },
+		"test-noenv" : {
+            "user_roles" : {
+                "test_role" : {
+                    "user_signals" : ["sample_signal"]
+                }
+            }
+        }
+    }
+}

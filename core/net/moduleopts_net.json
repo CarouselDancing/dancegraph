@@ -1,0 +1,331 @@
+{
+    "env": {
+        "opts": {
+            "ipcBufferEntries": 20,
+            "ipcInBufferName": "Dancegraph_Env_In",
+            "ipcOutBufferName": "Dancegraph_Env_Out",
+            "testFreqMicroSecs" :  100000
+        }
+    },
+
+    "net": {
+        "configs": {
+            "server_zedtest": {
+                "mode": "server",
+                "address": {
+                    "port": 7777
+                },
+                "scene": "zed-test"
+            },
+            "server_test": {
+                "mode": "server",
+                "address": {
+                    "port": 7777
+                },
+                "scene": "test"
+            },
+            "server_noenv": {
+                "mode": "server",
+                "address": {
+                    "port": 7777
+                },
+                "scene": "zed-noenv"
+            },
+            "client_zedcam": {
+                "common": {
+
+                    "address": {
+                        "port": 7810
+                    },
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "scene": "zed-test",
+                    "user_signals": [
+                        {
+                            "type": "test",
+                            "producer": "zed/camera",
+                            "consumers": [ "generic/consumer_ipc" ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            }
+                        }
+                    ],
+                    "env_signals": [
+                        {
+                            "type": "test",
+                            "producer": "test/producer",
+                            "consumers": [ "test/consumer" ],
+                            "options": {}
+                        }
+                    ]
+                },
+                "mode": "client",
+                "user_role": "dancer",
+                "name": "ZedTest2"
+            },
+            "client_transformer": {
+                "common": {
+                    "address": {
+                        "port": 7830
+                    },
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "scene": "zed-test",
+                    "transformer": {
+                        "xform/test": {
+                            "inputs": [ "zed", "test" ],
+                            "outputs": "test",
+                            "options": {}
+                        }
+                    },
+                    "user_signals": [
+                        {
+                            "type": "zed",
+                            "producer": "zed/null",
+                            "consumers": [
+                                "generic/printer"
+                            ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            }
+                        }
+                    ],
+                    "env_signals": [
+                        {
+                            "type": "test",
+                            "producer": "test/producer",
+                            "consumers": [ "test/consumer" ],
+                            "options": {}
+                        }
+                    ],
+                    "name": "NullTest1"
+                },
+                "mode": "client",
+                "user-role": "dancer"
+            },
+            "client_ipctest": {
+                "common": {
+                    "address": {
+                        "port": 7840
+                    },
+                    "env_signals": [
+                        {
+                            "consumers": [
+                                "test/consumer"
+                            ],
+                            "options": {
+                                "ipcOutBufferName": "DanceGraph_Env_Out",
+                                "ipcInBufferName": "DanceGraph_Env_In"
+                            },
+                            "producer": "generic/producer_ipc",
+                            "type": "env"
+                        }
+                    ],
+                    "scene": "zed-test",
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "user_signals": [
+                        {
+                            "consumers": [
+                                "generic/consumer_ipc"
+                            ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            },
+                            "producer": "generic/null",
+                            "type": "test"
+                        }
+                    ]
+                },
+                "mode": "client",
+                "name": "ZedIPCTest",
+                "user_role": "dancer"
+            },
+            "client_ipctest2": {
+                "common": {
+                    "address": {
+                        "port": 7840
+                    },
+                    "env_signals": [
+                        {
+                            "consumers": [
+                                "test/consumer"
+                            ],
+                            "options": {
+                                "ipcOutBufferName": "DanceGraph_Env_Out",
+                                "ipcInBufferName": "DanceGraph_Env_In"
+                            },
+                            "producer": "env/test",
+                            "type": "env"
+                        }
+                    ],
+                    "scene": "zed-test",
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "user_signals": [
+                        {
+                            "consumers": [
+                                "generic/consumer_ipc"
+                            ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            },
+                            "producer": "generic/null",
+                            "type": "test"
+                        }
+                    ]
+                },
+                "mode": "client",
+                "name": "ZedIPCTest",
+                "user_role": "dancer"
+            },
+
+            "listener_zed": {
+                "common": {
+                    "address": {
+                        "port": 7950
+                    },
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+
+                    "scene": "zed-test",
+
+                    "user_signals": [
+                        {
+                            "type": "zed",
+                            "consumers": [
+                                "generic/consumer_ipc"
+                            ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            }
+                        }
+                    ],
+                    "name": "ZedListener"
+                },
+                "signals": [ "zed" ],
+                "mode": "listener",
+                "user-role": "listener"
+            },
+            "client_zednull": {
+                "common": {
+
+                    "address": {
+                        "port": 7810
+                    },
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "scene": "zed-test",
+                    "user_signals": [
+                        {
+                            "type": "test",
+                            "producer": "zed/null",
+                            "consumers": [ "generic/consumer_ipc" ],
+                            "options": {
+                                "zed": {
+                                    "ipcOutBufferName": "DanceGraph_Zed_Out"
+                                }
+                            }
+                        }
+                    ],
+                    "env_signals": [
+                        {
+                            "type": "test",
+                            "producer": "test/producer",
+                            "consumers": [ "test/consumer" ],
+                            "options": {}
+                        }
+                    ]
+                },
+                "mode": "client",
+                "user_role": "dancer",
+                "name": "ZedNull"
+            },
+            "client_zedreplay": {
+                "common": {
+                    "address": {
+                        "port": 7960
+                    },
+                    "env_signals": [
+                        {
+                            "consumers": [
+                                "test/consumer"
+                            ],
+                            "options": {},
+                            "producer": "test/producer",
+                            "type": "test"
+                        }
+                    ],
+                    "name": "ReplayFile",
+                    "scene": "zed-test",
+                    "server_address": {
+                        "ip": "192.168.0.2",
+                        "port": 7777
+                    },
+                    "user_signals": [
+                        {
+                            "consumers": [
+                            ],
+                            "options": {
+                                "zed": {
+                                }
+                            },
+                            "producer": "generic/undumper",
+                            "type": "zed"
+                        }
+                    ]
+                },
+                "mode": "client",
+                "user-role": "dancer"
+            }
+        },
+        "scenes": {
+            "test": {
+                "user_roles": {
+                    "test_role": {
+                        "user_signals": [ "test" ],
+                        "env_signals": [ "env" ]
+                    }
+                }
+            },
+            "zed-noenv": {
+                "user_roles": {
+                    "test_role": {
+                        "user_signals": [ "zed" ]
+                    }
+                }
+            },
+            "zed-test": {
+                "user_roles": {
+                    "dancer": {
+                        "user_signals": [ "zed" ],
+                        "env_signals": [ "env" ]
+                    }
+                }
+            }
+        }
+    }
+
+}

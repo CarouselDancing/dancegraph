@@ -1,0 +1,13 @@
+{
+	"user" : [
+		{
+			"name" : "sample_signal",
+			"producer" : "C:/Users/esrev/Documents/repos/dancenet-plugin-ipc/build/modules/Debug/sample_signal_producer.dll",
+			"consumers" : ["C:/Users/esrev/Documents/repos/dancenet-plugin-ipc/build/modules/Debug/sample_signal_consumer.dll"
+            ],
+            "config" : "C:/Users/esrev/Documents/repos/dancenet-plugin-ipc/build/modules/Debug/sample_signal_config.dll",
+			"props" : {}
+		}
+	],
+	"env" : []
+}

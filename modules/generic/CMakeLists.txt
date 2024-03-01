@@ -1,0 +1,12 @@
+set(DANCEGRAPH_MODULE "generic")
+
+#add_subdirectory(consumer_callback)
+add_subdirectory(consumer_printer)
+add_subdirectory(consumer_dump2file)
+add_subdirectory(consumer_ipc)
+add_subdirectory(producer_ipc)
+#add_subdirectory(legacy_dump2file)
+#add_subdirectory(latency_dump2file)
+add_subdirectory(producer_undump)
+add_subdirectory(dummy_config)
+add_subdirectory(producer_null)

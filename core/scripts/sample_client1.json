@@ -1,0 +1,15 @@
+{
+	"common" : {
+		"name" : "client 1",
+		"address" : {
+			"port" : 7877
+		},
+		"server_address" : {
+			"port" : 7777
+		},
+		"module_path" : "../../modules/Debug",
+		"module_database" : "../../../scripts/sample_module_db.json",
+		"scene" : "test-noenv"
+	},
+    "user_role" : "test_role"
+}
