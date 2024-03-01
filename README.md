@@ -11,7 +11,7 @@
 [![Open in Visual Studio Code](https://img.shields.io/badge/-Open%20in%20VSCode-007acc?logo=Visual+Studio+Code&logoColor=FFFFFF)](https://vscode.dev/github/CarouselDancing/dancegraph)
 [![Github Downloads (total)](https://img.shields.io/github/downloads/CarouselDancing/dancegraph/total.svg)](https://github.com/CarouselDancing/dancegraph/releases)
 [![https://github.com/CarouselDancing/dancegraph/actions?query=workflow%3AVerify+branch%3Amain)](https://img.shields.io/github/actions/workflow/status/CarouselDancing/dancegraph/verify.yml?branch=main&logo=github&label=tests)]()
-![Lines of code](https://img.shields.io/tokei/lines/github/CarouselDancing/dancegraph)
+![Lines of code](https://tokei.rs/b1/github/CarouselDancing/dancegraph)
 </div>
 
 ## Overview
