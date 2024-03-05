@@ -621,14 +621,22 @@ namespace net
 				return false;
 			}
 
-			auto dllname = master_cfg.transformers.at(tnamep[0]).at(tnamep[1]).dll;
+			try {
+				auto dllname = master_cfg.transformers.at(tnamep[0]).at(tnamep[1]).dll;
+				// add library-specific properties and load the signal
+				const auto signal_lib_filename = master_cfg.make_library_filename(dllname);
+				auto lib = std::make_shared<sig::SignalLibraryTransformer>(signal_lib_filename.c_str());
+				if (!lib->is_initialized())
+					return false;
+				transformers.push_back(lib);
 
-			// add library-specific properties and load the signal
-			const auto signal_lib_filename = master_cfg.make_library_filename(dllname);
-			auto lib = std::make_shared<sig::SignalLibraryTransformer>(signal_lib_filename.c_str());
-			if (!lib->is_initialized())
+			}
+
+			catch (std::exception e) {
+				spdlog::critical("Transformer {} not loadable",tform.name);
 				return false;
-			transformers.push_back(lib);
+
+			}
 		}
 		
 		return true;

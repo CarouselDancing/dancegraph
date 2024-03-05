@@ -11,7 +11,7 @@ set(ZEDCOMMON_INCLUDE_FILES
 
 add_subdirectory(config)
 add_subdirectory(extrapolate)
-#add_subdirectory(testxform)
+add_subdirectory(testxform)
 add_subdirectory(tpose)
 
 include_directories(../../common)
