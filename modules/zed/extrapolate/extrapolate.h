@@ -173,9 +173,9 @@ namespace zed {
 				sig::SignalMetadata * sLast = zedHist->getmetadata(zedHist->queue_size() - 1).get();
 
 
-				//int signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				int signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
 				//int signal_size = nuke_rotations(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
-				int signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				//int signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
 
 				spdlog::debug("Outputting slerped rotation skel with {} bytes", signal_size);
 				return signal_size;
@@ -258,15 +258,27 @@ namespace zed {
 
 				ZedBodies<Z>* zm = (ZedBodies<Z> *) mem;
 
-				//signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
-				signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				//signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				
 
+				/* Populate keypoints with previous values, ready to be unrolled */
+				for (int i = 0; i < zm->num_skeletons; i++) {
+					for (int j = 0; j < zbLast->num_skeletons; j++) {
+						if (zm->skeletons[i].id == zbLast->skeletons[j].id) {
+							for (int k = 0; k < zm->skeletons[i].bones_skeleton(); k++) {
+								zm->skeletons[i].bone_keypoints[k] = zbLast->skeletons[j].bone_keypoints[k];
+							}
+						}
+					}
+				}
+				
 				for (int i = 0; i < zm->num_skeletons; i++) {
 					assert(i < zm->num_skeletons);
 					zm->skeletons[i].reset_keypoints();
 
 				}
-
+				
 				for (int i = 0; i < zm->num_skeletons; i++) {
 					for (int j = 0; j < zbLast->num_skeletons; j++) {
 						if (zm->skeletons[i].id == zbLast->skeletons[j].id) {
