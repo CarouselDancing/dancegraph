@@ -96,6 +96,8 @@ namespace zed {
 					if (in_bodies_from.skeletons[i].id == in_bodies_from.skeletons[j].id) {
 						lerp_rotations(out_bodies.skeletons[i], in_bodies_to.skeletons[i], in_bodies_from.skeletons[j], scale_factor);
 
+						out_bodies.skeletons[i].calculate_keypoints(in_bodies_to.skeletons[i], out_bodies.skeletons[i].bone_rotations);
+
 						skel_lerped = true;
 						break;
 					}
@@ -108,7 +110,7 @@ namespace zed {
 			
 			}
 
-			static int lerp_skeleton_counter = 0;
+			//static int lerp_skeleton_counter = 0;
 			/*
 			for (int i = 0; i < out_bodies.num_skeletons; i++) {
 				spdlog::trace("lerp_skeletons: {}, root transform lerp (sf {}, {}->{}->{}, bone 1 = {}->{}->{}", i, scale_factor,
@@ -260,24 +262,6 @@ namespace zed {
 
 				//signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
 				signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
-				
-
-				/* Populate keypoints with previous values, ready to be unrolled */
-				for (int i = 0; i < zm->num_skeletons; i++) {
-					for (int j = 0; j < zbLast->num_skeletons; j++) {
-						if (zm->skeletons[i].id == zbLast->skeletons[j].id) {
-							for (int k = 0; k < zm->skeletons[i].bones_skeleton(); k++) {
-								zm->skeletons[i].bone_keypoints[k] = zbLast->skeletons[j].bone_keypoints[k];
-							}
-						}
-					}
-				}
-				
-				for (int i = 0; i < zm->num_skeletons; i++) {
-					assert(i < zm->num_skeletons);
-					zm->skeletons[i].reset_keypoints();
-
-				}
 				
 				for (int i = 0; i < zm->num_skeletons; i++) {
 					for (int j = 0; j < zbLast->num_skeletons; j++) {

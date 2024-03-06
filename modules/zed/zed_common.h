@@ -658,6 +658,10 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_FULL_34;
         }
+        void reset_keypoints() {
+        }
+        void calculate_keypoints(const ZedSkeletonCompact_34 & old_skel,
+            const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations) {}
 
     };
 #ifdef _MSC_VER
@@ -683,6 +687,10 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_COMPACT_34;
         }
+        void reset_keypoints() {
+        }
+        void calculate_keypoints(const ZedSkeletonCompact_38& old_skel,
+            const std::array<quant_quat, NUM_BONES_COMPACT_38>& new_rotations) {}
 
     };
 #ifdef _MSC_VER
@@ -708,6 +716,10 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_FULL_34;
         }
+        void reset_keypoints() {
+        }
+        void calculate_keypoints(const ZedSkeletonFull_34& old_skel,
+            const std::array<quant_quat, NUM_BONES_FULL_34>& new_rotations) {}
 
     };
 #ifdef _MSC_VER
@@ -734,9 +746,11 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_FULL_38;
         }
+        void reset_keypoints() {
+        }
 
-
-
+        void calculate_keypoints(const ZedSkeletonFull_38& old_skel,
+            const std::array<quant_quat, NUM_BONES_FULL_38>& new_rotations) {}
 
     };
 #ifdef _MSC_VER
@@ -762,7 +776,10 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_FULL_38;
         }
-        
+        void reset_keypoints() {
+        }
+        void calculate_keypoints(const ZedSkeletonKP_38& old_skel,
+            const std::array<quant_quat, NUM_BONES_FULL_38>& new_rotations) {}
 
     };
 #ifdef _MSC_VER
@@ -787,7 +804,8 @@ namespace zed {
         static int bones_skeleton() {
             return NUM_BONES_FULL_34;
         }
-
+        void calculate_keypoints(const ZedSkeletonKP_34& old_skel,
+            const std::array<quant_quat, NUM_BONES_FULL_34>& new_rotations) {}
     };
 #ifdef _MSC_VER
 #pragma pack(pop)
@@ -825,15 +843,17 @@ namespace zed {
 
         // Recalculates the keypoints based on a given set of bone rotations
         void calculate_keypoints(std::array<quant_quat, NUM_BONES_COMPACT_34>& rotations, bool reset = false);
-
+        void calculate_keypoints(const ZedSkeletonKPRot_34& old_skel,
+            const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations);
 
     protected:
         void recurse_tree(BODY_34_PARTS bIdx,
             quat rotation,
-            BODY_34_PARTS pIdx,
-            std::array<vec3, NUM_BONES_FULL_34>& bones_in,
-            std::array<quat, NUM_BONES_FULL_34> & antirots,            
-            std::array<quat, NUM_BONES_FULL_34> & rots);
+            quat unrotation,
+            BODY_34_PARTS pIdx,            
+            const std::array<vec3, NUM_BONES_FULL_34>& bones_in,
+            const std::array<quat, NUM_BONES_FULL_34> & antirots,
+            const std::array<quat, NUM_BONES_FULL_34> & rots);
         
     };
 
@@ -872,7 +892,9 @@ namespace zed {
 
         // Recalculates the keypoints based on the bone rotations of the current object
         void calculate_keypoints(std::array<quant_quat, NUM_BONES_COMPACT_38>& rotations, bool reset = false);
-        
+        void calculate_keypoints(const ZedSkeletonKPRot_38& old_skel,
+            const std::array<quant_quat, NUM_BONES_COMPACT_38>& new_rotations);
+
         
     protected:
         void recurse_tree(BODY_38_PARTS bIdx,

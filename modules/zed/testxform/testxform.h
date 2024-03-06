@@ -72,14 +72,16 @@ namespace zed {
 			memcpy((void*)&out_bodies, (void*)&in_bodies_to, ZedBodies<Z>::size(in_bodies_to.num_skeletons));
 
 			for (int i = 0; i < in_bodies_to.num_skeletons; i++) {
+				
+				// Retarget the keypoints first before copying in the new rotations
 				out_bodies.skeletons[i].reset_keypoints();
+
 				spdlog::debug("Nuking rotations for skeleton {}", in_bodies_to.num_skeletons);
 				for (int j = 0; j < Z::bones_transmitted(); j++) {
 					out_bodies.skeletons[i].bone_rotations[j] = quant_quat{0, 0, 0};
 				}
+				
 			}
-			
-			//return ZedBodies<Z>::size(1);
 			
 			return ZedBodies<Z>::size(in_bodies_to.num_skeletons);
 		}
@@ -138,8 +140,7 @@ namespace zed {
 
 
 				//int signal_size = lerp_skeletons(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
-				//int signal_size = nuke_rotations(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
-				int signal_size = simple_passthrough(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
+				int signal_size = nuke_rotations(*(ZedBodies<Z> *)mem, *zbLast, *zbPenult, time_factor);
 
 				spdlog::debug("Outputting slerped rotation skel with {} bytes", signal_size);
 				return signal_size;
