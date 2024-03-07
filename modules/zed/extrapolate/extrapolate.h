@@ -95,7 +95,6 @@ namespace zed {
 					// We have a match.
 					if (in_bodies_from.skeletons[i].id == in_bodies_from.skeletons[j].id) {
 						lerp_rotations(out_bodies.skeletons[i], in_bodies_to.skeletons[i], in_bodies_from.skeletons[j], scale_factor);
-
 						out_bodies.skeletons[i].calculate_keypoints(in_bodies_to.skeletons[i], out_bodies.skeletons[i].bone_rotations);
 
 						skel_lerped = true;

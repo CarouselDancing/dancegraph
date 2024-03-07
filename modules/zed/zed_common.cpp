@@ -332,15 +332,17 @@ namespace zed
         static std::array<quat, NUM_BONES_FULL_34> urots; // New rotations
         static std::array<quat, NUM_BONES_FULL_34> antirots; // Unpack the current rotations, so we can redo them
 
-        for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
-            antirots[BONELIST_34_COMPACT[i]] = bone_rotations[i].unquantize();
-        }
 
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             urots[i] = quat{ 0, 0, 0, 1 };
             antirots[i] = quat{ 0, 0, 0, 1 };
         }
-        
+
+        for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+            antirots[BONELIST_34_COMPACT[i]] = bone_rotations[i].unquantize();
+        }
+
+
         for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
             urots[BONELIST_34_COMPACT[i]] = new_rotations[i].unquantize();
         }
