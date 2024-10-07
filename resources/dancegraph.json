@@ -33,6 +33,9 @@
 			"user_roles": {
 				"dancer": {
 					"user_signals": [ { "name": "zed/v2.1" } ]
+				},
+				"bot": {
+					"user_signals": [ { "name": "zed/v2.1" } ]
 				}
 			}
 		}
@@ -126,10 +129,73 @@
 				"local_output": true,
 				"network_output": false
 			}
+		},
+		"mimic_transformer": {
+			"v1.0": {
+				"dll": "mimic_transformer",
+				"user_inputs": [ "zed/v2.1" ],
+				"env_inputs": [ "env/v1.0" ],
+				"output": "zed/v2.1",
+				"opts": {
+					"zed/v2.1": {
+						"signal_queue_size": 10
+					},
+					"env/v1.0": {
+						"signal_queue_size": 10
+					}
+				},
+				"metadata_passthrough": true,
+				"exclusive_output": true,
+				"local_output": true,
+				"network_output": false,
+				"max_productions_per_tick" :  10
+			}
+		},
+		"ik_transformer": {
+			"v1.0": {
+				"dll": "ik_transformer",
+				"user_inputs": [ "zed/v2.1" ],
+				"env_inputs": [ "env/v1.0" ],
+				"output": "zed/v2.1",
+				"opts": {
+					"zed/v2.1": {
+						"signal_queue_size": 10
+					},
+					"env/v1.0": {
+						"signal_queue_size": 10
+					}
+				},
+				"metadata_passthrough": true,
+				"exclusive_output": true,
+				"local_output": true,
+				"network_output": false,
+				"max_productions_per_tick": 10
+			}
+		},
+		"torch_transformer": {
+			"v1.0": {
+				"dll": "zed_torch",
+				"user_inputs": [ "zed/v2.1" ],
+				"env_inputs": [ "env/v1.0" ],
+				"output": "zed/v2.1",
+				"opts": {
+					"zed/v2.1": {
+						"signal_queue_size": 50,
+						"prediction_model_file": "keypoint_model_30k_trace.pt",
+						"prediction_model_type": "keypoints_34",
+						"prediction_size" :  50
+					},
+					"env/v1.0": {
+						"signal_queue_size": 10
+					}
+				},
+				"metadata_passthrough": true,
+				"exclusive_output": true,
+				"local_output": true,
+				"network_output": false,
+				"max_productions_per_tick": 10
+			}
 		}
-
-
-
 	},
 	"user_signals": {
 		"zed": {
@@ -188,7 +254,9 @@
 					"zedSVOInput": "",
 					"zedStaticCamera": true,
 					"zedAllowReducedPrecision": true,
-					"zedTimeTracking": false
+					"zedTimeTracking": false,
+					"zedMaxDepthDistance": -1.0,
+					"zedMinDepthDistance" : -1.0
 				},
 
 				"globalopts": {
@@ -254,6 +322,9 @@
 					},
 					"env_test": {
 						"dll": "env_test"
+					},
+					"state_provider": {
+						"dll" :  "state_provider"
 					}
 				},
 				"consumers": {

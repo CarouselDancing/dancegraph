@@ -125,6 +125,9 @@ namespace dll {
 		spdlog::info("Second frame metadata: {},{},{},{}, * {}", sm2->userIdx, sm2->packetId, sm2->sigIdx, sm2->sigType, tsi2);
 
 		spdlog::info("Read {} frames", frames_v2.size());
+
+		fakePacketId = 0;
+
 		return true;
 
 	}
@@ -273,8 +276,8 @@ namespace dll {
 	}
 	
 
-	Undumper::Undumper(std::string fname) : filename(fname) {
-
+	Undumper::Undumper(std::string fname, bool rloop) : filename(fname), loop(rloop) {
+		
 
 	}
 
@@ -331,7 +334,7 @@ namespace dll {
 				//i++) {
 
 			sig::SignalMetadata* hp = (sig::SignalMetadata*)((*i)->data);
-
+			
 			long long playback_time = std::chrono::duration_cast<std::chrono::milliseconds> (hp->acquisitionTime - playback_start_time_v2).count();
 
 			spdlog::trace("Undump: Playback: {}, Elapsed: {}", playback_time, elapsed_time);
@@ -339,6 +342,8 @@ namespace dll {
 				
 				if (cur_frame > last_played) {
 					last_played = cur_frame;
+					hp->packetId = fakePacketId;					
+					fakePacketId += 1;					
 					return (*i);
 				}
 				else {
@@ -348,6 +353,18 @@ namespace dll {
 			}
 			cur_frame += 1;
 		}
+
+		if (loop && (i == frames_v2.end())) {
+			start_time = chrono::system_clock::now();
+			last_played = -1;
+			spdlog::info("Undumper reached end of animation, elapsed: {}", elapsed_time);
+			
+		}
+		else {
+			spdlog::info("Undumper end is when fv2 - i is {}", frames_v2.end() - i);
+
+		}
+
 		return nullptr;
 
 	}
@@ -355,21 +372,36 @@ namespace dll {
 DYNALO_EXPORT bool DYNALO_CALL SignalProducerInitialize(sig::SignalProperties& sigProp) {
 	spdlog::set_default_logger(sigProp.logger);
 	std::string infile;
+	bool loop;
+	json pJs;
 	try {
 		spdlog::info("SigProp undumper opts: {} {}", sigProp.signalType, sigProp.jsonConfig);
-		json pJs = json::parse(sigProp.jsonConfig);
-		//pJs.at("producer").at("playback_file").get_to(infile);
-		//spdlog::info(  "Opening playback file {}", infile);
-		
-		infile = pJs.at(sigProp.signalType).at("playback_file");
+		pJs = json::parse(sigProp.jsonConfig);
+	}
+	catch (json::exception e) {
+		spdlog::error("Undumper json config not parsed");
+	}
 
+	try {
+		infile = pJs.at(sigProp.signalType).at("playback_file");
+		
 	}
 	catch (json::exception e) {
 		spdlog::info(  "Can't open playback file: {}", infile);		
 		return false;
 	}
 
-	dll::g_Undumper = std::unique_ptr<dll::Undumper>(new dll::Undumper(infile));
+	try {
+		loop = pJs.at(sigProp.signalType).at("loop_replay");
+		//loop = pJs.at("loop_relay");
+		spdlog::info("Found loop_replay 1: {}", loop);
+	}
+	catch (json::exception e) {
+		loop = false;
+		spdlog::info("Not found loop_replay : {}", loop);
+	}
+
+	dll::g_Undumper = std::unique_ptr<dll::Undumper>(new dll::Undumper(infile, loop));
 
 	return dll::g_Undumper->initialize(sigProp);	
 

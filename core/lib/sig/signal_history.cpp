@@ -25,6 +25,7 @@ void SignalHistory::add(const uint8_t* entry, int signal_size, const sig::Signal
 
 	//spdlog::debug("Adding {} bytes for packet {}", signal_size, metaData.packetId);
 
+	/*
 	std::stringstream ss;
 	ss = std::stringstream("");
 	if (signal_size > 16) {
@@ -35,6 +36,8 @@ void SignalHistory::add(const uint8_t* entry, int signal_size, const sig::Signal
 		}
 		spdlog::debug("Bytes queued from packet {} is {}", metaData.packetId, ss.str());
 	}
+	*/
+
 
 	if (signalList.size() < max_queue_size) {
 		signalList.push_back(q_entry);

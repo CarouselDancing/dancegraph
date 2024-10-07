@@ -69,12 +69,16 @@ namespace net
 		assert(world.environment.userStates.size() > userIdx);
 		{
 			auto& userState = world.environment.userStates[userIdx];
-			std::string s = userState.mBody.userName;
+			//std::string s = userState.mBody.userName;
+			std::string s = std::string("");
 
 			strcpy(userState.mBody.avatarType, s.c_str());
 			strcpy(userState.mBody.avatarParams, s.c_str());
-			strcpy(userState.mBody.userName, s.c_str());
-			userState.mBody.isActive = 0;
+			strcpy(userState.mBody.userName, s.c_str());			
+			
+			// Set the initial state to 'active'
+			userState.mBody.isActive = 1;
+
 			for(int iClient = 0; iClient < clients.size(); ++iClient)
 				if(clients[iClient].is_connected())
 					net::send_env_msg<EnvUserState>(clients[iClient].peer_per_channel[(int)SignalType::Environment],
@@ -136,16 +140,29 @@ namespace net
 	}
 	void ServerState::send_initial_worldstate(int userIdx) {
 		// TODO: if many clients connect at the same time, we might try to send an env state message without having received the first env state message
-		// TODO: for now, just music state
-		
 
-		if (userIdx > 0) {
-			spdlog::info("Sending existing env info to newly created userIdx {}", userIdx);
-			net::send_env_msg<EnvMusicState>(clients[userIdx].peer_per_channel[(int)SignalType::Environment],
-				world.environment.musicState,
-				userIdx,
-				sig::time_now(),
-				&stats);
+		if (userIdx >= 0) {
+			spdlog::info("Sending env info to user {}", userIdx);
+			if (world.environment.musicKnown) {
+				spdlog::info("Sending existing music info to newly created userIdx {}, track {}, offset {}", userIdx, world.environment.musicState.mBody.trackName, world.environment.musicState.mBody.musicTime);
+				net::send_env_msg<EnvMusicState>(clients[userIdx].peer_per_channel[(int)SignalType::Environment],
+					world.environment.musicState,
+					userIdx,
+					sig::time_now(),
+					&stats);
+			}
+			else {
+				// We don't know what music is playing, so ask the first client to tell us
+
+				const EnvMusicRequest mr = EnvMusicRequest{};
+				spdlog::info("Music not known yet, requesting music from client {}", userIdx);
+				net::send_env_msg<EnvMusicRequest>(clients[userIdx].peer_per_channel[(int)SignalType::Environment],
+					mr,
+					userIdx,
+					sig::time_now(),
+					& stats);
+			}
+
 			for (int iUserInfo = 0; iUserInfo < world.environment.userStates.size(); ++iUserInfo)
 				if (iUserInfo != userIdx) { // ALSO SEND INFO FOR DISCONNECTED CLIENTS!
 
@@ -266,8 +283,7 @@ namespace net
 
 				// These addresses have to be the real address (i.e. NOT newConnection.address)
 				ci.address = client.address;
-				ci.id = {}; // clear the ID, otherwise the client might think the message is about their address/info
-
+				ci.id = {}; // clear the ID, otherwise the client might think the message is about their address/info				
 				// Send all other client information to this newly created client
 				spdlog::info("Sending info from userIdx {} to newly created userIdx {}", i, userIdx);
 				net::send_control_msg(clients[userIdx].peer_per_channel[(int)SignalType::Control], ci, i, time_now, &stats);
@@ -301,7 +317,7 @@ namespace net
 			net::send_control_msg(peer, msg::LatencyTelemetry{ msg::LatencyTelemetry::SenderType::Server, time_now }, userIdx, time_now,&stats);
 
 			// And send off the environment state to the new user
-
+			spdlog::info("Sending the world state to new user {}", userIdx);
 			send_initial_worldstate(userIdx);
 		}
 		else if (channel == ControlSignal::NewListenerConnection)
@@ -685,17 +701,19 @@ namespace net
 						if (sigType == SignalType::Environment) {
 							// Now we peer inside the signal to find what type of signal it is, and store it if appropriate
 							uint8_t* sigID = (uint8_t*)&packetHeader;
+							/*
 							std::stringstream ss;
 							ss << std::hex;
-
 
 							for (int i = 0; i < event.packet->dataLength; i++) {
 								ss << (int)sigID[i] << " ";
 							}
-							EnvMessageGeneric *sigInitial = (EnvMessageGeneric *)packetData;
+							spdlog::info("Received env sig of type {}: ({}): {}", sigEnvType, packetLen, ss.str());
+							*/
+							EnvMessageGeneric* sigInitial = (EnvMessageGeneric*)packetData;
 							int32_t sigEnvType = sigInitial->signalID;
-							spdlog::trace("Received env sig of type {}: ({}): {}", sigEnvType, packetLen, ss.str());
-
+							
+							
 							EnvSceneState* ess;
 							EnvUserState* eus;
 							EnvMusicState* ems;
@@ -714,24 +732,41 @@ namespace net
 								break;
 							case EnvUserStateID: // A user's individual state bundle has been updated
 								eus = (EnvUserState*)packetData;
-								
+								spdlog::info("Received user state update from {}, ID: {}", packetHeader.userIdx, eus->mBody.userID);
 								if (packetHeader.userIdx == eus->mBody.userID) {
 									world.environment.userStates[packetHeader.userIdx] = *eus;
 									spdlog::warn("Received User State update for {} from {}",eus->mBody.userName, packetHeader.userIdx);
+									spdlog::info("User State has clienttype {}", eus->mBody.clientType);
 									world.clients[packetHeader.userIdx].name = eus->mBody.userName;
 
 									clients[packetHeader.userIdx].name = eus->mBody.userName; // Update the name used in the gui
 								}
-								else
-									spdlog::warn("User {} is trying to update user {}'s state!", packetHeader.userIdx, eus->mBody.userID);
-								
+								else {
+
+									spdlog::warn("User {} is trying to update user {}'s state, overriding with packet ID!", packetHeader.userIdx, eus->mBody.userID);
+									// Because producers don't have easy access to the userID from the server, and we need produced user State packets, we'll disregard the userID field
+									// and assume the user is updating their own field
+									eus->mBody.userID = packetHeader.userIdx;
+									world.environment.userStates[packetHeader.userIdx] = *eus;
+									spdlog::warn("Received User State update for {} from {}", eus->mBody.userName, packetHeader.userIdx);
+									spdlog::info("User State has clienttype {}", eus->mBody.clientType);
+									
+									world.clients[packetHeader.userIdx].name = eus->mBody.userName;
+
+									clients[packetHeader.userIdx].name = eus->mBody.userName; // Update the name used in the gui
+
+
+
+								}
 								break;
 							case EnvMusicStateID: // Music state has been updated
 								// TODO: Authorization checking
 								if (env_check_authorization(EnvMusicStateID, packetHeader.userIdx))
-									ems = (EnvMusicState*)packetData;
-								
+									ems = (EnvMusicState*)packetData;								
 								world.environment.musicState = *ems;
+								world.environment.musicKnown = true;
+								spdlog::info("Received music state from user {}, track {}, offset {}, isPLaying {}", packetHeader.userIdx, world.environment.musicState.mBody.trackName, world.environment.musicState.mBody.musicTime, world.environment.musicState.mBody.isPlaying);
+
 								break;
 							case EnvTestStateID: // Just some test stuff	
 								ets = (EnvTestState*)packetData;
@@ -783,6 +818,8 @@ namespace net
 								break;
 							case EnvMessageGenericID: default: // Nothing to see here
 								spdlog::warn("Unknown Environment Message ID: {}", sigEnvType);
+
+
 								break;
 							}
 						}
@@ -826,7 +863,7 @@ namespace net
 							if (clients[i].peer_per_channel[j] == event.peer)
 							{
 								disconnect(i);
-							}
+							}						
 					}
 
 					break;
@@ -844,6 +881,7 @@ namespace net
 							{
 								disconnect(i);
 							}
+
 					}
 
 					break;

@@ -134,6 +134,12 @@ namespace zed {
 		g_SensorProducer->shutdown();
 	}
 
+
+	bool sdk_version_quit(int major, int minor, int patch) {
+		spdlog::critical("Zed SDK Version mismatch, requires version {}.{}.{} or later, found {}.{}.{}", ZED_VERSION_MAJOR_MINIMUM, ZED_VERSION_MINOR_MINIMUM, ZED_VERSION_PATCH_MINIMUM, major, minor, patch);
+		return false;
+	}
+
 	bool check_AI_model(sl::BODY_FORMAT format, sl::BODY_TRACKING_MODEL model) {
 
 		AI_MODELS aim;
@@ -147,7 +153,7 @@ namespace zed {
 				aim = sl::AI_MODELS::HUMAN_BODY_38_MEDIUM_DETECTION; break;
 
 			case sl::BODY_TRACKING_MODEL::HUMAN_BODY_ACCURATE:
-				aim = sl::AI_MODELS::HUMAN_BODY_FAST_DETECTION; break;
+				aim = sl::AI_MODELS::HUMAN_BODY_38_ACCURATE_DETECTION; break;
 			}
 		}
 		else if (format == sl::BODY_FORMAT::BODY_34) {
@@ -160,11 +166,21 @@ namespace zed {
 				aim = sl::AI_MODELS::HUMAN_BODY_ACCURATE_DETECTION; break;
 			}
 		}
-		else
+		else {
+			spdlog::warn("Can't find correct sl::BODY_FORMAT for AI model detection: {}", (int)format);
 			return false;
+		}
+
+		/*
+		// For some reason, sl::checkAIModelStatus doesn't seem to work well.
+	
+		spdlog::info("Checking AI Model status for model type {} / model {}, format {}", (int)aim, (int)model, (int)format);
 
 		sl::AI_Model_status stat = sl::checkAIModelStatus(aim);
+		spdlog::info("AI Model Status: {} / {}", stat.downloaded, stat.optimized);
 		return stat.optimized;
+		*/
+		return true;
 	}
 
 
@@ -182,6 +198,15 @@ namespace zed {
 		init_parameters.camera_resolution = resolutionmap.at(bufferProperties.resolution).r;
 		init_parameters.coordinate_system = coordmap.at(bufferProperties.coordsystem).c;
 
+		if (bufferProperties.minDepthDistance > 0) {
+			init_parameters.depth_minimum_distance = bufferProperties.minDepthDistance;
+		}
+
+		if (bufferProperties.maxDepthDistance > 0) {
+			init_parameters.depth_maximum_distance = bufferProperties.maxDepthDistance;
+		}
+
+		
 		if (bufferProperties.svoInput.size() > 0) {
 			init_parameters.input.setFromSVOFile(bufferProperties.svoInput.c_str());
 			spdlog::info("Replaying SVO file data from {} instead of live camera", bufferProperties.svoInput);
@@ -191,14 +216,12 @@ namespace zed {
 		
 		sl::Camera::getSDKVersion(major, minor, patch);
 
-		if ((major < ZED_VERSION_MAJOR_MINIMUM)
-			|| (minor < ZED_VERSION_MINOR_MINIMUM)
-			|| (patch < ZED_VERSION_PATCH_MINIMUM)) {
-			spdlog::critical("Zed SDK Version mismatch, requires version {}.{}.{} or later, found {}.{}.{}", ZED_VERSION_MAJOR_MINIMUM, ZED_VERSION_MINOR_MINIMUM, ZED_VERSION_PATCH_MINIMUM, major, minor, patch);
-			return false;
 
-		}
+		long int vernum = 1000000 * major + 1000 * minor + patch;
+		long int minvernum = 1000000 * ZED_VERSION_MAJOR_MINIMUM + 1000 * ZED_VERSION_MINOR_MINIMUM + ZED_VERSION_PATCH_MINIMUM;
 
+		if (vernum < minvernum)
+			return sdk_version_quit(major, minor, patch);
 
 		ERROR_CODE zed_err;
 
@@ -250,12 +273,16 @@ namespace zed {
 		body_tracker_params.detection_model = trackingmodelmap.at(bufferProperties.trackingModel).f;
 		body_tracker_params.allow_reduced_precision_inference = bufferProperties.allowReducedPrecision;
 
+		// For some reason the ZED SDK is returning false negatives
+		
 		if (!check_AI_model(body_tracker_params.body_format, body_tracker_params.detection_model)) {
+
 			spdlog::critical("Warning, ZED SDK body tracking model is not optimized. Please refer to ZED SDK documentation to optimize the models");
+			
 			zed.close();
 			return false;
 		}
-			
+		
 		
 
 

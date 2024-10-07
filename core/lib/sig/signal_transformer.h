@@ -37,6 +37,7 @@ namespace sig
 		std::function<int(uint8_t*, time_point&, SignalMemory &)> getSignalDataCore;
 		std::function<int(uint8_t* mem, sig::time_point& time)> fnGetSignalData;
 		std::function<const char *()> fnGetName;
+		std::function<void(uint16_t)>fnSetLocalUserIdx;
 
 	public:
 
@@ -46,7 +47,6 @@ namespace sig
 		{
 
 			spdlog::info("Loading Transformer Library from {}", sharedLibraryPath);
-
 
 			signalMemory = SignalMemory{};
 			signalMemory.initialize();
@@ -73,6 +73,8 @@ namespace sig
 				fnGetSignalData = [ & gSDC = getSignalDataCore, &sM = signalMemory](uint8_t* mem, sig::time_point& time) { return gSDC(mem, time, sM); };
 
 				fnGetName = library->get_function<const char *()>("GetName");
+
+				fnSetLocalUserIdx = library->get_function<void(uint16_t)>("SetLocalUserIdx");
 			}
 
 			return library != nullptr;
@@ -89,8 +91,13 @@ namespace sig
 
 		// This looks like a dll function, but it's actually inbuilt, and adds entries to the history queue
 		void fnProcessSignalData(const uint8_t* mem, int size, const sig::SignalMetadata& metaData);
+
+		// Transformer is parsing signals, this informs the transformer of the local user Index
+		//void fnSetLocalUser(const uint16_t userIdx);
+
 		
 	};
+
 }
 
 
@@ -153,5 +160,11 @@ DYNALO_EXPORT void DYNALO_CALL SignalTransformerShutdownProducer();
 
 
 //DYNALO_EXPORT std::string DYNALO_CALL GetName();
-DYNALO_EXPORT const char * DYNALO_CALL GetName();
+DYNALO_EXPORT const char* DYNALO_CALL GetName();
 
+
+/**
+* \fn void DYNALO_CALL void SetUserIdx(uint16_t);
+* Informs the transformer of the local user's user index
+*/
+DYNALO_EXPORT void DYNALO_CALL SetLocalUserIdx(uint16_t idx);

@@ -49,23 +49,36 @@ namespace net
 		return make_address(address.ip.c_str(), address.port);
 	}
 
-	ENetAddress make_server_address(const Address & address) {
+	ENetAddress make_server_address(const Address & address) {		
 		ENetAddress a{ 0 };
 		a.host = ENET_HOST_ANY;
 		a.port = address.port;
 		return a;
 	}
 
-	ENetHost* create_host(const ENetAddress* address, int maxChannels, bool is_server)
+	ENetHost* create_host(const ENetAddress* address, int maxChannels, bool is_server = false)
 	{
 		auto numOutgoing = is_server ? kMaxClients : 1;
-		ENetHost* host = enet_host_create(address,
-			numOutgoing,
-			maxChannels,
-			0 /* assume any amount of incoming bandwidth */,
-			0 /* assume any amount of outgoing bandwidth */);
-		return host;
+		
+		if (false) {
+			ENetHost* host = enet_host_create(0,
+				numOutgoing,
+				maxChannels,
+				0,
+				0);
+			return host;
+		}
+		else {
+			ENetHost* host = enet_host_create(address,
+				numOutgoing,
+				maxChannels,
+				0 /* assume any amount of incoming bandwidth */,
+				0 /* assume any amount of outgoing bandwidth */);
+			return host;
+		}
+		
 	}
+
 
 	bool create_hosts_multiport(std::vector<ENetHost*>& hosts, const ENetAddress& address, int numUserSignals, int numEnvSignals, bool is_server)
 	{

@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
 
 		auto config = configp->second;
 		spdlog::info("Config preset {} with scene {}", preset_name, config.scene);
-
+		
 		config.address.port = portoverride;
 
 		std::vector<std::string> server_addr = program.get<std::vector<std::string>>("--server");
@@ -270,6 +270,7 @@ int main(int argc, char** argv) {
 				if (sig == prod.first) {					
 					spdlog::info("Got {}", prod.second.opts.dump(4));
 					spdlog::info("Prev Opts: {}", config.producer_overrides[prod.first].opts.dump(4));
+					//config.producer_overrides[prod.first].opts[sig]["playback_file"] = replay_file;
 					config.producer_overrides[prod.first].opts[sig]["playback_file"] = replay_file;
 				}
 			}

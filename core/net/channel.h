@@ -132,12 +132,21 @@ namespace net
 		// Does the transformer spit data to the local consumers?
 		bool transformer_to_local_client = false;
 
+		// Does transformed data output include the metadata packet?
+		bool transform_includes_metadata = false;
 		
+		// Suppress signals not passed through a transformer?
+		bool transformed_input_only = false;
+
 		// This is to indicate that there was an error fetching signal configs
 		bool is_error;
 
+		// What's the biggest number of times we call a transformer per tick
+		int transform_multi_prod_max = 10;
+		
 	private:
 		bool initialized = false;
+		
 	};
 
 	// Runtime scene data, useful for server/clients/listeners
@@ -151,6 +160,7 @@ namespace net
 		// The actual transformer libraries need to be stashed outside of the SignalConfig lists
 		std::vector<std::shared_ptr<sig::SignalLibraryTransformer>> transformers;
 
+		void BroadcastLocalUserIndex(uint16_t idx);
 
 
 		// Common initialisation function for server/client/listener

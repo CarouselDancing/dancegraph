@@ -126,7 +126,41 @@
 				}
 			},
 			"env_signal_consumers": {},
-			"include_ipc_consumers" : false,
+			"include_ipc_consumers": false,
+			"single_port_operation": false,
+			"ignore_ntp": true
+		},
+		"zed4_env_tpose": {
+			"username": "Mr T",
+			"scene": "env_testscene",
+			"role": "dancer",
+			"address": {
+				"ip": "",
+				"port": 7800
+			},
+			"server_address": {
+				"ip": "192.168.0.2",
+				"port": 7777
+			},
+			"producer_overrides": {
+				"zed/v2.1": {
+					"name": "tpose"
+				},
+
+				"env/v1.0": {
+					"name": "state_provider",
+					"opts": {
+						"clientType": 2,
+						"userName": "Murphy",
+						"avatarType": "Magipeep",
+						"avatarParams": {},
+						"timeDelay": 0.05
+					}
+				}
+				
+			},
+			"env_signal_consumers": {},
+			"include_ipc_consumers": false,
 			"single_port_operation": false,
 			"ignore_ntp": true
 		},
@@ -183,7 +217,12 @@
 			},
 			"producer_overrides": {
 				"zed/v2.1": {
-					"name": "generic/undumper/v1.0"
+					"name": "generic/undumper/v1.0",
+					"opts": {
+						"zed/v2.1": {
+							"loop_replay": true
+						}
+					}
 				},
 				"env/v1.0": {
 					"name": "generic/prod_ipc/v1.0",
@@ -194,6 +233,124 @@
 				}
 			},
 			"env_signal_consumers": {},
+			"include_ipc_consumers": false,
+			"single_port_operation": false
+		},
+		"zed4_env_replaysignal": {
+			"username": "zed replay",
+			"scene": "env_testscene",
+			"role": "dancer",
+			"address": {
+				"ip": "",
+				"port": 7800
+			},
+			"server_address": {
+				"ip": "127.0.0.1",
+				"port": 7777
+			},
+			"producer_overrides": {
+				"zed/v2.1": {
+					"name": "generic/undumper/v1.0",
+					"opts": {
+						"zed/v2.1": {
+							"loop_replay": true
+						}
+					}
+				},
+				"env/v1.0": {
+					"name": "state_provider",
+					"opts": {
+						"clientType": 2,
+						"userName": "Murphy",
+						"avatarType": "Magipeep",
+						"avatarParams": {},
+						"timeDelay": 0.05
+					}
+				}
+			},
+			"env_signal_consumers": {},
+			"include_ipc_consumers": false,
+			"single_port_operation": false
+		},
+		"zed4_env_mockhuman": {
+			"username": "zed replay",
+			"scene": "env_testscene",
+			"role": "dancer",
+			"address": {
+				"ip": "",
+				"port": 7800
+			},
+			"server_address": {
+				"ip": "127.0.0.1",
+				"port": 7777
+			},
+			"producer_overrides": {
+				"zed/v2.1": {
+					"name": "generic/undumper/v1.0",
+					"opts": {
+						"zed/v2.1": {
+							"loop_replay": true
+						}
+					}
+				},
+				"env/v1.0": {
+					"name": "state_provider",
+					"opts": {
+						"clientType": 1,
+						"userName": "Roy",
+						"timeDelay": 0.05,
+						"avatarType": "Magipeep",
+						"avatarParams": {
+						}
+					}
+				}
+			},
+			"env_signal_consumers": {},
+			"include_ipc_consumers": false,
+			"single_port_operation": false
+		},
+		"zed4_ik_test": {
+			"username": "zed_iktest",
+			"scene": "env_testscene",
+			"role": "dancer",
+			"address": {
+				"ip": "",
+				"port": 7800
+			},
+			"server_address": {
+				"ip": "127.0.0.1",
+				"port": 7777
+			},
+			"producer_overrides": {
+				"zed/v2.1": {
+					"name": "tpose"
+				},
+				"env/v1.0": {
+					"name": "generic/prod_ipc/v1.0",
+					"opts": {
+						"ipcInBufferName": "Dancegraph_Env_In",
+						"ipcBufferEntries": 5
+					}
+				}
+			},
+			"user_signal_consumers": {
+				"zed/v2.1": [
+					{
+						"name": "generic/dump2file/v1.0",
+						"opts": {
+						}
+					}
+				]
+
+			},
+			"env_signal_consumers": {},
+			"transformers": [
+				{
+					"name": "ik_transformer/v1.0",
+					"opts": {}
+				}
+
+			],
 			"include_ipc_consumers": false,
 			"single_port_operation": false
 		},
@@ -235,7 +392,7 @@
 			"transformers": [
 				{
 					"name": "test_transformer/v1.0",
-					"opts" :  {}
+					"opts": {}
 				}
 
 			],

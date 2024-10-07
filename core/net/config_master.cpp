@@ -23,9 +23,13 @@ namespace net
 	{
 		static Root root;
 
+
+		/*
 		const std::string& DanceGraphAppDataPath()
 		{
 			static std::string danceGraphAppdataPath;
+			
+
 			if (danceGraphAppdataPath.empty())
 			{
 				if (const char* appdata_path = std::getenv("LOCALAPPDATA"))
@@ -38,6 +42,31 @@ namespace net
 			return danceGraphAppdataPath;
 		}
 
+		*/
+
+		const std::string &  DanceGraphAppDataPath()
+		{
+			static std::string pathString;
+				
+			std::filesystem::path fsPath;
+
+			fsPath = std::filesystem::path (std::getenv("LOCALAPPDATA")) / "DanceGraph";
+
+			if (fsPath.empty())
+				fsPath = "~/.config/DanceGraph";
+
+			spdlog::info("DGPath is {}", std::getenv("LOCALAPPDATA"));
+
+			if (!std::filesystem::exists(fsPath))
+				spdlog::error("DanceGraph data path does not exist in {}", fsPath.string());
+
+			spdlog::info("Returning path {}", fsPath.string());
+			pathString = fsPath.string();
+
+			return pathString;
+
+		}
+
 		bool Root::load()
 		{
 			auto& root = const_cast<Root&>(instance());
@@ -45,10 +74,11 @@ namespace net
 			auto resources_path = fs::path(__FILE__).parent_path() / ".."/"resources";
 			// Then try the local app data directory
 			if (!fs::is_directory(resources_path))	
-				resources_path = DanceGraphAppDataPath();
+				resources_path = std::filesystem::path(DanceGraphAppDataPath());
+
 			if (!fs::is_directory(resources_path))
 			{
-				spdlog::error("Cannot file resources path at {}", resources_path.string());
+				spdlog::error("Cannot find resources path at {}", resources_path.string());
 				return false;
 			}
 			auto text = dancenet::readTextFile((resources_path / "dancegraph.json").string());

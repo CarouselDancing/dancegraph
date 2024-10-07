@@ -1,7 +1,8 @@
 
 cmake_minimum_required(VERSION 3.17)
 project(dancegraph)
-set( CMAKE_CXX_STANDARD 20 )
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 17)
 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -21,6 +22,9 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin/share)
 
 option(USE_ZED_SDK "Use ZED SDK dependencies" ON)
 option(BUILD_UNITY_PLUGIN "Build plugins for the Unity Engine" ON)
+option(USE_LIBTORCH "Use Libtorch transformer" ON)
+
+
 
 if(UNIX)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -62,7 +66,6 @@ set (DANCEGRAPH_LIBTYPE_CONFIG "config")
 
 file(REMOVE ${CMAKE_BINARY_DIR}/bin/share/dll_list.txt)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin/share/dlls)
-
 
 
 include_directories(. contrib core/lib contrib/spdlog/include contrib/BS_thread_pool/include)

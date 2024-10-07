@@ -3,6 +3,7 @@
 
 #include <spdlog/spdlog.h>
 
+
 namespace sig
 {
 	struct ExampleProducer
@@ -14,7 +15,7 @@ namespace sig
 		bool init(const sig::SignalProperties& sigProp)
 		{
 			spdlog::info("Initializing producer\n");
-			auto j = nlohmann::json::parse(sigProp.jsonConfig);;
+			auto j = nlohmann::json::parse(sigProp.jsonConfig);
 			cfg = j[sigProp.signalType];
 			spdlog::info("Impulse produces {} bytes @ {}ms intervals {}ms sleep\n", sigProp.producerFormMaxSize, cfg.interval_ms, cfg.sleep_ms);
 			last_time_point = time_now();

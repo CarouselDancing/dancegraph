@@ -27,7 +27,9 @@
 #define RAD2DEG (180.0f / M_PI)
 
 
-constexpr int NUM_KEYPOINTS = 34;
+constexpr int SDK_TO_UNITY_SCALE = 1000.0;
+
+//constexpr int NUM_KEYPOINTS = 34;
 
 #define BODY_PART_TEST static_cast<int>(BODY_PARTS_POSE_38::RIGHT_ELBOW)
 
@@ -105,6 +107,7 @@ namespace zed {
         RightHandThumb4,
         LAST
     };
+
 
     enum class BODY_34_PARTS
     {
@@ -349,6 +352,7 @@ namespace zed {
         const std::string str() const;
         vec3 scale(float s);
         const quat embiggen() const;
+        float mag();
 
     };
 
@@ -381,6 +385,8 @@ namespace zed {
     vec3 operator - (const vec3& a, const  vec3& b);
     vec3 operator * (float f, const vec3& a);
     float dot(const vec3& a, const  vec3& b);
+    vec3 cross(const vec3& a, const vec3& b);
+
 
     quat operator + (const quat& a, const quat& b);
     quat operator - (const quat& a, const quat& b);
@@ -397,7 +403,6 @@ namespace zed {
     vec3 operator *(const quat& q, const vec3 v);
 
     quat operator * (const quat& a, const quat& b);
-
 
 
     struct xform {
@@ -682,10 +687,10 @@ namespace zed {
         xform_quant root_transform;
         std::array<quant_quat, NUM_BONES_COMPACT_38> bone_rotations;
         static int bones_transmitted() {
-            return NUM_BONES_FULL_38;
+            return NUM_BONES_COMPACT_38;
         }
         static int bones_skeleton() {
-            return NUM_BONES_COMPACT_34;
+            return NUM_BONES_FULL_34;
         }
         void reset_keypoints() {
         }
@@ -825,6 +830,8 @@ namespace zed {
         std::array<vec3, NUM_BONES_FULL_34> bone_keypoints;
 
         std::array<quant_quat, NUM_BONES_COMPACT_34> bone_rotations;
+        
+        static std::array<BODY_34_PARTS, NUM_BONES_FULL_34> parent_list;
 
         static int bones_transmitted() {
             return NUM_BONES_COMPACT_34;
@@ -834,17 +841,97 @@ namespace zed {
         }
         
         static vec3 tpose_position(int idx) {
+            spdlog::debug("Bone {} ({}) has Tpose values [{}]", idx, (int)body_34_masterlookup.at((BODY_34_PARTS)idx), bone_master_tpose[(int)body_34_masterlookup.at((BODY_34_PARTS)idx)].str());
             return bone_master_tpose[(int)body_34_masterlookup.at((BODY_34_PARTS)idx)];
         }
 
 
         // Recalculates the keypoints based on the bone rotations
-        void reset_keypoints();
+        void reset_keypoints(bool populate_rotations = false);
 
         // Recalculates the keypoints based on a given set of bone rotations
-        void calculate_keypoints(std::array<quant_quat, NUM_BONES_COMPACT_34>& rotations, bool reset = false);
-        void calculate_keypoints(const ZedSkeletonKPRot_34& old_skel,
-            const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations);
+        void calculate_keypoints(const std::array<quant_quat, NUM_BONES_COMPACT_34>& rotations, bool populate_rotations = true, bool reset = false);
+        void calculate_keypoints(const std::array<quat, NUM_BONES_FULL_34>& rotations, bool populate_rotations = true, bool reset = false);
+        void calculate_keypoints(const ZedSkeletonKPRot_34& old_skel, const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations, bool populate_rotations = true);
+
+        void calculate_keypoints(std::array<vec3, NUM_BONES_FULL_34>& output_keypoints, const std::array<quat, NUM_BONES_FULL_34>& urots, bool populate_rotations = true, bool reset = false);
+
+        void calculate_global_rotations(std::array<quat, NUM_BONES_FULL_34>& new_rotations,
+                    BODY_34_PARTS start_bone,                    
+                    const std::array<quat, NUM_BONES_FULL_34>& local_rotations);
+
+        static void calculate_parents();
+
+        quat rotate_towards(const vec3& effector, const vec3& pivot_pt, const vec3& end_pt);
+
+        // TODO: Take this outside the single pass once you're going multi-pass
+
+
+        
+
+        void ccd_pass(std::array<quat, NUM_BONES_FULL_34>& output, vec3& effector, BODY_34_PARTS pivot_bone, BODY_34_PARTS end_bone, const std::array<vec3, NUM_BONES_FULL_34>& keypoints) {
+            /*
+            if (parent_list.size() < NUM_BONES_FULL_34) {                
+                calculate_parents();
+            }
+            */
+            
+            // Make this conditional
+            calculate_parents();
+            
+            
+
+            static std::array<quat, NUM_BONES_FULL_34> glob_rots = std::array<quat, NUM_BONES_FULL_34>();
+            static std::array<vec3, NUM_BONES_FULL_34> updated_keypoints = std::array<vec3, NUM_BONES_FULL_34>();
+
+
+            std::vector<BODY_34_PARTS> bone_path = std::vector<BODY_34_PARTS>();
+            get_bone_path(bone_path, pivot_bone, end_bone);
+
+            vec3 pivot_pt = keypoints[(int)pivot_bone];
+            vec3 end_pt = keypoints[(int)end_bone];
+
+            std::stringstream bs = std::stringstream("");
+            for (auto b : bone_path) {
+                bs << " " << (int)b;
+            }
+
+
+            spdlog::debug("Bone path from {} to {}: {}", (int)pivot_bone, (int)end_bone, bs.str());
+
+
+            for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+                output[i] = quat{ 0,0,0,1 };
+                updated_keypoints[i] = keypoints[i];
+            }
+
+            for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+                output[BONELIST_34_COMPACT[i]] = bone_rotations[i].unquantize();
+            }
+            
+            for (auto bone : bone_path) {
+                // This is super-wasteful. Optimize
+                
+                
+                calculate_global_rotations(glob_rots, BODY_34_PARTS::PELVIS, output);
+                std::stringstream ss = std::stringstream("");
+                for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+                    ss << " [" << glob_rots[i].str() << "] ";
+                }
+                spdlog::debug("Global Rotations for bone {}: {}", (int) bone, ss.str());
+                calculate_keypoints(updated_keypoints, output, false);
+
+                vec3 bone_pt = updated_keypoints[(int)bone];
+                auto rot_diff = rotate_towards(effector, bone_pt, end_pt);
+                quat old_globrot = glob_rots[(int)parent_list[(int)bone]];
+                
+                spdlog::debug("CCD_Pass: Bone components: {}, {}, {}, {}", bone_pt.str(), rot_diff.str(), old_globrot.inv().str(), output[(int)bone].str());
+
+                output[(int)bone] = old_globrot * rot_diff * old_globrot.inv() * output[(int)bone];
+                spdlog::debug("CCD_Pass: Setting bone {} to {}", (int)bone, output[(int)bone].str());
+            }
+        }
+
 
     protected:
         void recurse_tree(BODY_34_PARTS bIdx,
@@ -854,10 +941,31 @@ namespace zed {
             const std::array<vec3, NUM_BONES_FULL_34>& bones_in,
             const std::array<quat, NUM_BONES_FULL_34> & antirots,
             const std::array<quat, NUM_BONES_FULL_34> & rots);
+
+        void recurse_tree(std::array<vec3, NUM_BONES_FULL_34> & output_keypoints,
+            BODY_34_PARTS bIdx,
+            quat rotation,
+            quat unrotation,
+            BODY_34_PARTS pIdx,
+            const std::array<vec3, NUM_BONES_FULL_34>& bones_in,
+            const std::array<quat, NUM_BONES_FULL_34>& antirots,
+            const std::array<quat, NUM_BONES_FULL_34>& rots);
+
+
+
+
+        void recurse_full_globals(BODY_34_PARTS cur_bone,
+            BODY_34_PARTS par_bone,
+            quat rot,
+            std::array<quat, NUM_BONES_FULL_34>& global_rots,
+            const std::array<quat, NUM_BONES_FULL_34>& local_rotations);
         
+        void get_bone_path(std::vector<BODY_34_PARTS>& parts, BODY_34_PARTS from, BODY_34_PARTS to);
+
+
+
+
     };
-
-
 #ifdef _MSC_VER
 #pragma pack(pop)
 #endif
@@ -877,10 +985,10 @@ namespace zed {
         std::array<quant_quat, NUM_BONES_COMPACT_38> bone_rotations;
 
         static int bones_transmitted() {
-            return NUM_BONES_FULL_38;
+            return NUM_BONES_COMPACT_38;
         }
         static int bones_skeleton() {
-            return NUM_BONES_COMPACT_38;
+            return NUM_BONES_FULL_38;
         }
 
         static vec3 tpose_position(int idx) {
@@ -898,10 +1006,12 @@ namespace zed {
         
     protected:
         void recurse_tree(BODY_38_PARTS bIdx,
-            quat rotation, BODY_38_PARTS pIdx,
-            std::array<vec3, NUM_BONES_FULL_38>& bones_in,
-            std::array<quat, NUM_BONES_FULL_38>& antirots,
-            std::array<quat, NUM_BONES_FULL_38> & rots);
+            quat rotation, 
+            quat unrotation,
+            BODY_38_PARTS pIdx,
+            const std::array<vec3, NUM_BONES_FULL_38>& bones_in,
+            const std::array<quat, NUM_BONES_FULL_38>& antirots,
+            const std::array<quat, NUM_BONES_FULL_38> & rots);
 
 
     };
@@ -925,7 +1035,7 @@ namespace zed {
         <typename S>
         struct ZedBodies {
 
-        uint8_t num_skeletons = 0;
+        uint32_t num_skeletons = 0;
         //std::chrono::time_point<std::chrono::system_clock> elapsed;
         int32_t grab_delta;
         int32_t track_delta;
@@ -975,6 +1085,9 @@ namespace zed {
 
         int keypointsThreshold; // Minimum number of keypoints to return
 
+        float minDepthDistance;
+        float maxDepthDistance;
+
         int fps; // Really we'd prefer this to be a string, but it'll confuse things when writing the config file
         std::string depth;
         std::string resolution;
@@ -1015,6 +1128,9 @@ namespace zed {
 
             staticCamera = opts.at("zed/v2.1").at("zedStaticCamera");
             allowReducedPrecision = opts.at("zed/v2.1").at("zedAllowReducedPrecision");
+
+            minDepthDistance = opts.at("zed/v2.1").at("zedMinDepthDistance");
+            maxDepthDistance = opts.at("zed/v2.1").at("zedMaxDepthDistance");
 
             spdlog::info("Coord system is {}, bodySignalType is {}", coordsystem, bst);
 

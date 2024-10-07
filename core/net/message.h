@@ -25,12 +25,12 @@
 
 using time_point = std::chrono::time_point<std::chrono::system_clock>;
 
-
+/*
 constexpr int MUSIC_TRACKNAME_MAX_SIZE = 1024;
 constexpr int SCENENAME_MAX_SIZE = 1024;
 constexpr int AVATARDESC_MAX_SIZE = 1024;
 constexpr int USERNAME_MAX_SIZE = 1024;
-
+*/
 
 namespace net
 {
@@ -117,7 +117,8 @@ namespace net
 			float time_offset_ms_ntp = 0.0f;
 
 			ClientID id;
-			uint32_t pad; // to pad the struct to 8 bytes
+			uint16_t clientType; // Client side type
+			uint16_t pad; // to pad the struct to 8 bytes
 		};
 
 
@@ -252,11 +253,7 @@ namespace net
 			static const ControlSignal kControlSignal = ControlSignal::PingReply;
 			uint64_t pad;
 		};
-
 	}
-
-
-
 
 	// Wrapper struct for signal metadata followed by a fixed control message
 	template<class T>
@@ -329,6 +326,9 @@ namespace net
 		return m.header;
 	}
 */
+
+
+
 
 
 	template<class T>

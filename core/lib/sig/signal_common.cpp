@@ -67,13 +67,22 @@ namespace sig
 		return srcSize;
 	};
 
-	void SignalProperties::set_all_sizes(int datasize)
+	void SignalProperties::set_all_sizes(int datasize, bool metadata_passthrough)
 	{		
-		spdlog::warn("SET ALL SIZES CALLED WITH SIZE: {}", datasize);
-		producerFormMaxSize = datasize;
-		consumerFormMaxSize = datasize;
-		networkFormMaxSize = datasize;
-		stateFormMaxSize = keepState ? datasize : 0;
+
+
+		spdlog::info("SET ALL SIZES CALLED WITH SIZE: {}", datasize);
+		int metasize;
+		if (metadata_passthrough) {
+			metasize = sizeof(SignalMetadata);
+		}
+		else {
+			metasize = 0;
+		}
+		producerFormMaxSize = datasize + metasize;
+		consumerFormMaxSize = datasize + metasize;
+		networkFormMaxSize = datasize + metasize;
+		stateFormMaxSize = keepState ? datasize + metasize : 0;
 
 		consumerFormMaxSizeWithHeader = datasize + sizeof(SignalMetadata);
 		networkFormMaxSizeWithHeader = datasize + sizeof(SignalMetadata);

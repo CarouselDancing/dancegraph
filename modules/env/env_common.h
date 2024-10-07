@@ -7,11 +7,11 @@
 
 // ENV_USERNAME_MAX_SIZE MUST be bigger than 44
 
-constexpr int ENV_SIGNAL_MAX_SIZE = 1024;
+constexpr int ENV_SIGNAL_MAX_SIZE = 1536; // User Signal is the biggest, with 1024 + 256 + 32 + some other guff
 constexpr int ENV_SCENENAME_MAX_SIZE = 256;
-constexpr int ENV_USERNAME_MAX_SIZE = 256;
+constexpr int ENV_USERNAME_MAX_SIZE = 255;
 constexpr int ENV_USERAVATARNAME_MAX_SIZE = 32;
-constexpr int ENV_USERAVATARPARAMS_MAX_SIZE = 256;
+constexpr int ENV_USERAVATARPARAMS_MAX_SIZE = 1024;
 constexpr int ENV_MUSICTRACK_MAX_SIZE = 256;
 
 // May want to have these inherit some type information regarding whether they contain server-stored information or similar
@@ -97,7 +97,7 @@ struct SceneDataRequestBody {
 };
 
 struct EnvUserStateBody {
-    uint32_t userID = 0xffff;
+    int32_t userID = -1;
     // Name of the user
     
     char userName[ENV_USERNAME_MAX_SIZE]="";
@@ -111,7 +111,9 @@ struct EnvUserStateBody {
     float position[3] = {0.0f,0.0f,0.0f};
     // Origin orientation of the avatar in the gameworld
     uint16_t orientation[3] = {0,0,0};
+    
     uint8_t isActive=0;
+    uint8_t clientType = 0; // A client-sided field to denote the type of avatarr 0 = human, 1 = demo bot, etc
 };
 
 struct EnvUserRequestBody {

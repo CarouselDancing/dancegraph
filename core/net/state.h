@@ -29,6 +29,7 @@ namespace net
 		std::vector<uint8_t> data;
 		// timestamp of last data
 		sig::time_point timestamp;
+
 		// Do we have signal data?
 		bool is_valid() const { return !data.empty(); }
 
@@ -65,13 +66,16 @@ namespace net
 		EnvTestState testState;
 		std::vector<EnvUserState> userStates;
 
+		// The music state isn't known until we ask the first client
+		bool musicKnown = false;
+
 		EnvState() {
 			testState.mBody.payload = -1;			
 		}
 
 		std::string to_string() const;
 
-		
+		void reset_user_state(int user);
 	};
 
 	// the world is a collection of clients and the environment
@@ -83,7 +87,9 @@ namespace net
 
 		// update clients based on new connection
 		void on_connection_info(const sig::SignalMetadata& header, const msg::ConnectionInfo& ci, int numUserSignals);
-
+		void reset_user_state(int user) {
+			environment.reset_user_state(user);
+		}
 		std::string to_string() const;
 	};
 }

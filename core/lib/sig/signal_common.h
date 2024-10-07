@@ -148,7 +148,7 @@ namespace sig
 		/** A helper function to populate the various internal data size functions throughout the signal management process.
 		* Populate this with the size of the bare data signal (i.e. not including Metadata)
 		*/
-		void set_all_sizes(int datasize);
+		void set_all_sizes(int datasize, bool include_metadata = true);
 
 		// Data transformation functions, allowing for compression etc
 		// By default, a simple memcpy

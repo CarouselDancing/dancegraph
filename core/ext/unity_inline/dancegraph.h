@@ -71,7 +71,7 @@ namespace dll
 		DGRAPH_API void SetLogToFile(const char * logFile);
 
 		// GetLastError was taken
-		DGRAPH_API void GetLastDanceGraphError(char *, unsigned int);
+		DGRAPH_API void GetLastDanceGraphError(char *, int);
 
 
 	}

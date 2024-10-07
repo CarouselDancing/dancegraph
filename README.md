@@ -10,7 +10,7 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 [![Open in Visual Studio Code](https://img.shields.io/badge/-Open%20in%20VSCode-007acc?logo=Visual+Studio+Code&logoColor=FFFFFF)](https://vscode.dev/github/CarouselDancing/dancegraph)
 [![https://github.com/CarouselDancing/dancegraph/actions?query=workflow%3AVerify+branch%3Amain)](https://img.shields.io/github/actions/workflow/status/CarouselDancing/dancegraph/verify.yml?branch=main&logo=github&label=tests)]()
-<!--![Lines of code](https://tokei.rs/b1/github/CarouselDancing/dancegraph)-->
+![Lines of code](https://tokei.rs/b1/github/CarouselDancing/dancegraph)
 <!--[![Github Downloads (total)](https://img.shields.io/github/downloads/CarouselDancing/dancegraph/total.svg)](https://github.com/CarouselDancing/dancegraph/releases)-->
 </div>
 
@@ -35,7 +35,7 @@ Currently, development is taking place with DanceGraph implemented as a Unity pl
 
 ### Dance Application Dependencies
 
-[![Zed SDK 4.08](https://img.shields.io/github/v/release/stereolabs/zed-sdk?color=%2300aeec&label=ZED%20SDK)](https://img.shields.io/github/v/release/stereolabs/zed-sdk?color=%2300aeec&label=ZED%20SDK)
+[![Zed SDK 4.08 or later](https://img.shields.io/github/v/release/stereolabs/zed-sdk?color=%2300aeec&label=ZED%20SDK)](https://img.shields.io/github/v/release/stereolabs/zed-sdk?color=%2300aeec&label=ZED%20SDK)
 [![CUDA 12.3 (via Zed SDK)](https://img.shields.io/badge/CUDA-11.0:12.3-brightgreen.svg)](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64)
 [![Made with Unity](https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity)](https://download.unity3d.com/download_unity/9674261d40ee/Windows64EditorInstaller/UnitySetup64-2022.3.5f1.exe)
 

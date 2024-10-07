@@ -118,7 +118,7 @@ namespace sig {
 
 	const char* TRANSFORMER_NAME = "fallback/v1.0";
 	
-	DYNALO_EXPORT const char * DYNALO_CALL GetName() {
+	DYNALO_EXPORT const char* DYNALO_CALL GetName() {
 		return TRANSFORMER_NAME;
 	}
 
@@ -127,4 +127,11 @@ namespace sig {
 		getSignalDataCore(mem, time, signalMemory);
 	}
 	*/
+
+	DYNALO_EXPORT void DYNALO_CALL SetLocalUserIdx(uint16_t idx) {
+		spdlog::debug("Transformer {} has been informed local user idx is {}", TRANSFORMER_NAME, idx);
+		
+	}
+
+
 }

@@ -14,12 +14,23 @@ add_subdirectory(extrapolate)
 add_subdirectory(testxform)
 add_subdirectory(tpose)
 
+add_subdirectory(ik_transformer)
+add_subdirectory(mimic_transformer)
+
 include_directories(../../common)
 
-if (${USE_ZED_SDK})
+if (USE_ZED_SDK)
 	message("USE_ZED_SDK is ON")
 else()
 	message("USE_ZED_SDK is OFF")
+endif()
+
+
+
+if (USE_LIBTORCH)
+	message("USE_LIBTORCH is ON")
+else()
+	message("USE_LIBTORCH is OFF")
 endif()
 
 
@@ -33,6 +44,19 @@ if (${USE_ZED_SDK})
 		message("ZED4 Producer Not found. Make sure you've downloaded the submodule")
 	endif()
 endif()
+
+
+# zed4_producer has ZED4 SDK dependencies, so it's hived off to a separate repository
+if (${USE_LIBTORCH})
+	message("Checking for libtorch cmake in ${CMAKE_CURRENT_SOURCE_DIR}/zed_torch/CMakeLists.txt")
+	if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zed_torch/CMakeLists.txt")
+		message("Zed Torch Transformer found. Building with Torch support")
+		add_subdirectory(zed_torch)
+	else()
+		message("ZED Torch Not found. Make sure you've downloaded the submodule")
+	endif()
+endif()
+
 
 
 add_library(zed_common STATIC ${ZEDCOMMON_SOURCE_FILES})

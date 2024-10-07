@@ -21,7 +21,7 @@ include_directories ( ${COMMON_INCLUDES} ../ )
 
 add_library(zed_tpose SHARED ${ALL_SOURCE_FILES})
 
-target_link_libraries(zed_tpose PUBLIC ${CONTRIB_LIBRARIES} sig common ipc spdlog)
+target_link_libraries(zed_tpose PUBLIC ${CONTRIB_LIBRARIES} sig common zed_common ipc spdlog)
 
 target_include_directories(
     zed_tpose PUBLIC

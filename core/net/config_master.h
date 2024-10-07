@@ -79,6 +79,14 @@ namespace net
 			bool local_output;
 			// Whether the output of the transformer is passed to the network
 			bool network_output;
+			// Whether the output signal includes the metadata
+			bool metadata_passthrough;
+
+			// Whether this replaces all of the signals of the output type, or merely adds to them
+			bool exclusive_output;
+
+			// How many times can we produce in a single tick?
+			int max_productions_per_tick;
 
 		};
 
@@ -155,7 +163,7 @@ namespace net
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Signal, dll);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SignalModule, config, producers, consumers, opts, globalopts);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(NetworkingSettings, connectionPing, connectionTimeout);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Transformer, dll, user_inputs, env_inputs, output, opts, local_output, network_output);
+		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Transformer, dll, user_inputs, env_inputs, output, opts, local_output, network_output, metadata_passthrough, exclusive_output, max_productions_per_tick);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Root, dll_folder, networking, scenes, generic_producers, generic_consumers, user_signals, env_signals, transformers);
 
 	}

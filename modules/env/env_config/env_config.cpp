@@ -13,7 +13,7 @@ DYNALO_EXPORT void DYNALO_CALL GetSignalProperties(sig::SignalProperties& sigPro
 	sigProp.set_all_sizes(ENV_SIGNAL_MAX_SIZE);
 	sigProp.isReliable = true;
 	sigProp.isReflexive = true;
-	sigProp.isPassthru = true;
+	sigProp.isPassthru = true;	
 	sigProp.keepState = false; // state is kept anyway with the hardcoded structs
 
 	sigProp.toString = [](std::string& text, const uint8_t* mem, int size, sig::SignalStage stage) {

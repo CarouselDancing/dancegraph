@@ -13,10 +13,18 @@
 //#include <chrono>
 //#include <thread>
 
+#include <core/net/config_master.h> // For DanceGraphAppDataPath
+
 #include <sstream>
 
 namespace net
 {
+
+	void ClientState::update_local_user_index(uint16_t idx) {
+		userIdx = idx;
+		scene_runtime_data.BroadcastLocalUserIndex(idx);
+	}
+
 	void ClientState::handle_message(const uint8_t* data, int size, int channelId)
 	{
 		auto time_now = sig::time_now();
@@ -28,25 +36,27 @@ namespace net
 
 		const SignalType sigType = (SignalType)packetHeader.sigType;
 
-		if(sigType == SignalType::Control)
+		if (sigType == SignalType::Control)
 		{
 			spdlog::trace("recv sig type {} at channel {}\n", int(sigType), int(channelId));
 			if (channelId == (int)msg::ConnectionInfo::kControlSignal)
 			{
 				const auto& connectionInfo = *(msg::ConnectionInfo*)payload;
 				world.on_connection_info(packetHeader, connectionInfo, scene_runtime_data.user_signals.size());
- 
+
 				spdlog::info("Comparing address {} to {}, coming from user {} ({})\n", connectionInfo.address, address, std::string(connectionInfo.name.data()), packetHeader.userIdx);
 				//if (memcmp(&connectionInfo.address, &address, sizeof(ENetAddress)) == 0)
 				if (memcmp(&connectionInfo.id.value, &uniqueID.value, sizeof(msg::ClientID)) == 0) {
-					if(userIdx != -1)
+					if (userIdx != -1)
 						spdlog::critical("re-receiving userIdx: new={} old={}", packetHeader.userIdx, userIdx);
-					userIdx = packetHeader.userIdx;
+
 					spdlog::info("Got a matched ID {}: New UserIdx = {}", connectionInfo.id.toString(), userIdx);
+					update_local_user_index(packetHeader.userIdx);
+
 
 					// Okay, so we have our userID. Time to send out port override messages for environment and client signals
 
-					
+
 					if (!config.single_port_operation) {
 						msg::PortOverrideInformation mEnv;
 						mEnv.id = uniqueID;
@@ -103,13 +113,13 @@ namespace net
 									{
 										const int numCopy = std::min(numLeft, msg::TelemetryClientData::MAX_COUNT);
 										auto msg = msg::TelemetryClientData{ (uint8_t)SignalType::Client, (uint8_t)iSig, (uint16_t)numCopy, id0, {} };
-										std::copy(signalData.timePoints.begin()+numCopied, signalData.timePoints.begin() + numCopied+numCopy, msg.timePoints.begin());
+										std::copy(signalData.timePoints.begin() + numCopied, signalData.timePoints.begin() + numCopied + numCopy, msg.timePoints.begin());
 										std::copy(signalData.timePointsAtAdapter.begin() + numCopied, signalData.timePointsAtAdapter.begin() + numCopied + numCopy, msg.timePointsAtAdapter.begin());
 										send_control_msg(msg, time_now);
 										numLeft -= numCopy;
 										numCopied += numCopy;
 										id0 += numCopy;
-									}	
+									}
 								}
 								else // the server is requesting telemetry data that this client stores for other client signals
 								{
@@ -127,7 +137,7 @@ namespace net
 										numCopied += numCopy;
 									}
 								}
-									
+
 							}
 						}
 					}
@@ -135,11 +145,16 @@ namespace net
 			}
 		}
 		else
-		{			
+		{
 			// Handle special case of bad user index, or unregistered user. in this case, don't process packet
-			if (sigType == SignalType::Client && (packetHeader.userIdx < 0 || packetHeader.userIdx >= world.clients.size() || !world.clients[packetHeader.userIdx].is_initialized()))
+			if (sigType == SignalType::Client && (packetHeader.userIdx < 0 || packetHeader.userIdx >= world.clients.size()))
 			{
-				spdlog::warn("Client signal with invalid user idx {}, out of world's {}", packetHeader.userIdx, world.clients.size());
+				spdlog::warn("Client signal with invalid user idx {}/{}", packetHeader.userIdx, world.clients.size());
+				return;
+			}
+
+			if (sigType == SignalType::Client && !world.clients[packetHeader.userIdx].is_initialized()) {
+				spdlog::warn("Client signal with uninitialized user {}/{}", packetHeader.userIdx, world.clients.size());
 				return;
 			}
 
@@ -151,19 +166,24 @@ namespace net
 					auto& signalData = world.clients[packetHeader.userIdx].signals[packetHeader.sigIdx];
 					signalData.timePoints.push_back(time_now);
 					signalData.packetIds.push_back(packetHeader.packetId);
-					
+
 					signalData.timePointsAtAdapter.emplace_back(); // initialize with some default value
-					spdlog::debug("Emplacing timePointsAtAdapter to size {}", signalData.timePointsAtAdapter.size());
+					spdlog::trace("Emplacing timePointsAtAdapter to size {}", signalData.timePointsAtAdapter.size());
 				}
 			}
 
 			// 
 			// prepare the signal metadata
-			auto& signalData = (sigType == SignalType::Client) ? world.clients[packetHeader.userIdx].signals: world.environment.signals;
-			
-			// If the SignalConfig is out of range, it's likely that we've received a signal from an unhandled type. Spit out a warning and return rather than continue
-			
+			std::vector<net::SignalData> signalData;
+
+			if (sigType == SignalType::Client)
+				signalData = world.clients[packetHeader.userIdx].signals;
+			else
+				signalData = world.environment.signals;
+
+			//auto& signalData = (sigType == SignalType::Client) ? world.clients[packetHeader.userIdx].signals: world.environment.signals;
 			if (!scene_runtime_data.CheckSignalType(packetHeader)) {
+
 				spdlog::warn("Client Signal of unhandled type {}, idx {}. Do client and server configs match?", packetHeader.sigType, packetHeader.sigIdx);
 				return;
 			}
@@ -171,10 +191,10 @@ namespace net
 			auto& cache = cache_st;
 			auto& cache2 = cache2_st;
 
-			const auto & sigCfg = scene_runtime_data.SignalConfigFromMetadata(packetHeader);
+			const auto& sigCfg = scene_runtime_data.SignalConfigFromMetadata(packetHeader);
 
 			//spdlog::info(  "Received the packet for processing to the {} consumers!", sigCfg.consumers.size());
-			int stateSize=-1;
+			int stateSize = -1;
 			if (sigCfg.signalProperties.keepState)
 			{
 
@@ -185,46 +205,65 @@ namespace net
 			}
 
 			// If signal is passthru, then we can use the network payload directly 
-			const uint8_t * consumerDataPtr = payload;
+			const uint8_t* consumerDataPtr = payload;
 			int consumerDataSize = payloadSize;
 			// If it's not passthru, we need a transform!
 			if (!sigCfg.signalProperties.isPassthru)
 			{
-				cache2.resize(sigCfg.signalProperties.consumerFormMaxSize);
-				// if we keep state, then use the state->consumer function
-				if (sigCfg.signalProperties.keepState)
-				{
-					consumerDataSize = sigCfg.signalProperties.stateToConsumer(cache.data(), stateSize, cache2.data(), cache2.size(), nullptr);
+				if (!sigCfg.transformed_input_only) {
+					//spdlog::info("Signal {}/{} is apparently non-transformer exclusive", packetHeader.sigType, packetHeader.sigIdx);
+					cache2.resize(sigCfg.signalProperties.consumerFormMaxSize);
+
+					// if we keep state, then use the state->consumer function
+					if (sigCfg.signalProperties.keepState)
+					{
+						consumerDataSize = sigCfg.signalProperties.stateToConsumer(cache.data(), stateSize, cache2.data(), cache2.size(), nullptr);
+					}
+					// Otherwise, if we don't keep state, then use the network->consumer function
+					else
+					{
+						consumerDataSize = sigCfg.signalProperties.networkToConsumer(payload, payloadSize, cache2.data(), cache2.size(), nullptr);
+					}
 				}
-				// Otherwise, if we don't keep state, then use the network->consumer function
-				else
-				{
-					consumerDataSize = sigCfg.signalProperties.networkToConsumer(payload, payloadSize, cache2.data(), cache2.size(), nullptr);
+				else {
+					//spdlog::trace("Packet {} being skipped for transformer exclusivity");
 				}
 			}
 
 			// send to local consumer
 			// TODO: below, time should really be network time (from the packet)
-			
+
 			if (fn_process_signal_data)
 			{
 				std::string text;
 				sigCfg.signalProperties.toString(text, consumerDataPtr, consumerDataSize, sig::SignalStage::Consumer);
 				spdlog::trace("Signal data from net: {}\n", text.c_str());
-				fn_process_signal_data(consumerDataPtr, consumerDataSize, packetHeader);
+				if (!sigCfg.transformed_input_only) {
+					//spdlog::info("Signal {}/{} is apparently non-transformer exclusive", packetHeader.sigType, packetHeader.sigIdx);
+					fn_process_signal_data(consumerDataPtr, consumerDataSize, packetHeader);
+				}
+				else {
+					//spdlog::info("Packet {} being skipped for transformer exclusivity", packetHeader.packetId);
+				}
+
 			}
 
-			
-			for (auto& consumer : sigCfg.consumers) {		
-				spdlog::trace("Info going out to consumer: {}", consumerDataSize);
-				consumer->fnProcessSignalData(consumerDataPtr, consumerDataSize, packetHeader);
+			// We send to local consumers if the transformer doesn't demand exclusivity
+			if (!sigCfg.transformed_input_only) {
+				for (auto& consumer : sigCfg.consumers) {
+					spdlog::info("Packet {}: Info going out to consumer: {}", packetHeader.packetId, consumerDataSize);
+					consumer->fnProcessSignalData(consumerDataPtr, consumerDataSize, packetHeader);
+				}
 			}
-			
+			else {
+				spdlog::info("Packet {} being skipped for transformer exclusivity", packetHeader.packetId);
+			}
+
 			// Send to transformers too
-			for (auto & trformer : sigCfg.transformer_inputs) {
-				spdlog::debug("Info going out to transformer: {}", consumerDataSize);				
+			for (auto& trformer : sigCfg.transformer_inputs) {
+				spdlog::debug("Info going out to transformer: {}", consumerDataSize);
 				trformer->fnProcessSignalData(consumerDataPtr, consumerDataSize, packetHeader);
-				
+
 			}
 
 		}
@@ -244,10 +283,10 @@ namespace net
 					spdlog::warn("Timepoints vector has size zero, not writing to it!");
 					return;
 				}
-				
+
 				// for local user, serial packets are guaranteed, so no need to search
 				if(sigMeta.userIdx == userIdx)
-					signalData.timePointsAtAdapter[sigMeta.packetId-signalData.packetIds.front()] = tp; 
+					signalData.timePointsAtAdapter[sigMeta.packetId-signalData.packetIds.front()] = tp;
 				else // search for matching packet id
 					for (int i = int(signalData.packetIds.size()) - 1; i >= 0; --i)
 						if (signalData.packetIds[i] == sigMeta.packetId)
@@ -258,7 +297,7 @@ namespace net
 	}
 
 	void ClientState::tick()
-	{		
+	{
 		// TODO: when server is down, wait a bit and try to reconnect
 		static int counter = 0;
 		++counter;
@@ -305,54 +344,96 @@ namespace net
 			// First check if the user has any new signal data from their hardware
 			auto& signalState = world.clients[userIdx].signals;
 			_process_outgoing_signal(SignalType::Client, signalState);
+
+			auto& envSignalState = world.environment.signals;
+			_process_outgoing_signal(SignalType::Environment, envSignalState);
 			_process_transformer_output(SignalType::Client, signalState);
-			//_process_outgoing_signal(SignalType::Environment, world.environment.signals); // This really works with IPC
 		}
 		else {
-			
+
 		}
-		
+
 	}
 
-	
+
+	// Revert to non-threaded code for the transformer since we're doing multiple calls with the same parameters
 	void ClientState::_process_transformer_output(SignalType sType, std::vector<net::SignalData>& signalData) {
 		// Pretty much the same as _process_outgoing_signal but only looking at the transformer output
-		
+
 		for (int sigIdx = 0; sigIdx < signalData.size(); ++sigIdx)
 		{
-			
-
-			auto& cache = caches_xform_mt[sigIdx];
-			auto & cache2 = caches2_xform_mt[sigIdx];
 
 			const auto& channelCfg = scene_runtime_data.SignalConfigFromIndexAndType(sigIdx, sType);
+			
+			// If there's no transformer here, we don't care
+			if (channelCfg.transformer_output == nullptr)
+				return;
+
+			auto& cache = caches_xform_mt[sigIdx];
+			auto& cache2 = caches2_xform_mt[sigIdx];
+
 			const int hs = sizeof(sig::SignalMetadata);
 			cache.resize(channelCfg.signalProperties.producerFormMaxSize + hs);
 
 			auto& signal_time = time_points_mt[sigIdx];
-			auto& transformer_future = transformer_futures[sigIdx];
 
-			bool request_data = false;
-			bool process_data = false;
-
-			if (!transformer_future.valid())
-				request_data = true;
-			else if (transformer_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
-			{
-				request_data = true;
-				process_data = true;
-			}
-			spdlog::debug("Transformer outputs with index {} and type {}", sigIdx, (int)sType);
-			if (process_data)
-			{
-				auto numBytesRead = transformer_future.get();
-				spdlog::debug("Transformer num bytesread = {}", numBytesRead);
-				assert(numBytesRead <= channelCfg.signalProperties.producerFormMaxSize);
+			for (int call = 0; call < channelCfg.transform_multi_prod_max; call++) {
+				auto& getDataFn = channelCfg.transformer_output->fnGetSignalData;
+				int numBytesRead = getDataFn((uint8_t*)(cache.data()), std::ref(signal_time));
+				spdlog::info("Transformer Pass {}/{}, sigIdx {}, read {} bytes", call, channelCfg.transform_multi_prod_max, sigIdx, numBytesRead);
 				bool hasNewSignal = numBytesRead > 0;
-				if (hasNewSignal)
-				{
-					auto& stateData = signalData[sigIdx].data;
-					int stateSize = 0;
+				// There's no more data to read. Return!
+				if (!hasNewSignal) {
+					spdlog::info("Dropped transformer produce calls after iter {}", call);
+					return;
+				}
+				auto& stateData = signalData[sigIdx].data;
+				int stateSize = 0;
+
+				if (channelCfg.transform_includes_metadata) {
+					//spdlog::info("Transformer pass {}, sigIdx {}, signal size {} received with metadata", call, sigIdx, numBytesRead);
+					sig::SignalMetadata* sm = (sig::SignalMetadata*)stateData.data();
+
+					/*
+					spdlog::info("Signal Meta : packet {}, Type {}, Idx{}, Usr {}",
+						sm->packetId,
+						sm->sigIdx,
+						sm->sigType,
+						sm->userIdx);
+
+					if (numBytesRead >= 64) {
+						std::stringstream ss = std::stringstream("");
+						ss << std::hex;
+						for (int i = 0; i < 64; i++) {
+							ss << (int)*(cache.data() + i) << " ";
+						}
+						spdlog::info("Client.cpp xform: sigdump: {}", ss.str());
+					}
+					*/
+					if (channelCfg.signalProperties.keepState)
+					{
+						stateData.resize(channelCfg.signalProperties.stateFormMaxSize);
+						stateSize = channelCfg.signalProperties.producerToState(cache.data(), numBytesRead, stateData.data(), stateData.size(), nullptr);
+					}
+					int networkSize = numBytesRead;
+					if (!channelCfg.signalProperties.isPassthru && channelCfg.transformer_to_network)
+					{
+						cache2.resize(channelCfg.signalProperties.networkFormMaxSize + hs);
+						int stateSize = 0;
+						if (channelCfg.signalProperties.keepState) {
+							networkSize = channelCfg.signalProperties.stateToNetwork(stateData.data(), stateSize, cache2.data(), cache2.size(), nullptr);
+						}
+						else {
+							networkSize = channelCfg.signalProperties.producerToNetwork(cache.data(), numBytesRead, cache2.data(), cache2.size(), nullptr);
+						}
+						cache2.resize(networkSize + hs);
+					}
+					else {
+						cache.resize(numBytesRead);
+					}
+				}
+				else {
+
 					if (channelCfg.signalProperties.keepState)
 					{
 						stateData.resize(channelCfg.signalProperties.stateFormMaxSize);
@@ -363,11 +444,9 @@ namespace net
 					{
 						cache2.resize(channelCfg.signalProperties.networkFormMaxSize + hs);
 						int stateSize = 0;
-						if (channelCfg.signalProperties.keepState)
-						{
+						if (channelCfg.signalProperties.keepState) {
 							networkSize = channelCfg.signalProperties.stateToNetwork(stateData.data(), stateSize, cache2.data() + hs, cache2.size() - hs, nullptr);
 						}
-
 						else {
 							networkSize = channelCfg.signalProperties.producerToNetwork(cache.data() + hs, numBytesRead, cache2.data() + hs, cache2.size() - hs, nullptr);
 						}
@@ -376,99 +455,97 @@ namespace net
 					else {
 						cache.resize(numBytesRead + hs);
 					}
+				}
 
-					const auto& packetVec = channelCfg.signalProperties.isPassthru ? cache : cache2;
-
-					sig::SignalMetadata header = *(sig::SignalMetadata*)cache.data();
+				std::vector<uint8_t> packetVec = channelCfg.signalProperties.isPassthru ? cache : cache2;
+				sig::SignalMetadata& header = *(sig::SignalMetadata*)cache.data();
+				if (!channelCfg.transform_includes_metadata)
 					header = sig::SignalMetadata{ signal_time, signalData[sigIdx].sentCounter++, userIdx, uint8_t(sigIdx), (uint8_t)sType };
-					
-					// Telemetry for PRODUCER data
-					auto time_now = sig::time_now();
-					signalData[sigIdx].timePoints.push_back(time_now);
-					if (signalData[sigIdx].packetIds.empty())
-						signalData[sigIdx].packetIds.push_back(header.packetId);
-					RegisterPacketToTracker(header, signal_time, "SEND");
 
-					if (channelCfg.transformer_to_network) {
-						auto packet = make_packet(packetVec, channelCfg.signalProperties.isReliable);
-						auto enet_channel_id = (sType == SignalType::Client) ? 0 : sigIdx;
-						auto peer_server = server_peer_per_channel[(sType == SignalType::Client) ? 2 + sigIdx : 1];
-						spdlog::debug("Sending transformer packet size {}, id {} as user {}\n", packet->dataLength, header.packetId, header.userIdx);
-						auto err = enet_peer_send(peer_server, enet_channel_id, packet);
+				// Telemetry for PRODUCER data
+				auto time_now = sig::time_now();
+				signalData[sigIdx].timePoints.push_back(time_now);
+				if (signalData[sigIdx].packetIds.empty())
+					signalData[sigIdx].packetIds.push_back(header.packetId);
+				RegisterPacketToTracker(header, signal_time, "SEND");
 
-						if (err != 0)
-							spdlog::error("send_msg error!");
-					}
-					// By default (if passthru), set the consumer data as the producer data
-					const uint8_t* consumerPtr = cache.data() + hs;
-					int consumerSize = numBytesRead;
-					// Otherwise, transform from cache2 (that stores the network form)
+				if (channelCfg.transformer_to_network) {
+					auto packet = make_packet(packetVec, channelCfg.signalProperties.isReliable);
+					auto enet_channel_id = (sType == SignalType::Client) ? 0 : sigIdx;
+					auto peer_server = server_peer_per_channel[(sType == SignalType::Client) ? 2 + sigIdx : 1];
+					spdlog::debug("Sending transformer packet size {}, id {} as user {}\n", packet->dataLength, header.packetId, header.userIdx);
+					auto err = enet_peer_send(peer_server, enet_channel_id, packet);
+
+					if (err != 0)
+						spdlog::error("send_msg error!");
+				}
+				// By default (if passthru), set the consumer data as the producer data
+				const uint8_t* consumerPtr = cache.data() + hs;
+
+				int consumerSize = numBytesRead;
+				if (channelCfg.transform_includes_metadata) {
+					consumerSize = consumerSize > hs ? consumerSize - hs : 0;
+				}
+				// Otherwise, transform from cache2 (that stores the network form)
 
 
-					if (!channelCfg.signalProperties.isPassthru)
+				if (!channelCfg.signalProperties.isPassthru)
+				{
+					cache.resize(channelCfg.signalProperties.consumerFormMaxSize);
+					consumerSize = channelCfg.signalProperties.networkToConsumer(cache2.data() + hs, cache2.size() - hs, cache.data(), cache.size(), nullptr);
+				}
+
+				spdlog::trace("Packet {} outgoing via {}", header.packetId, __FUNCTION__);
+				if (channelCfg.signalProperties.isReflexive)
+				{
+
+					if (fn_process_signal_data)
 					{
-						cache.resize(channelCfg.signalProperties.consumerFormMaxSize);
-						consumerSize = channelCfg.signalProperties.networkToConsumer(cache2.data() + hs, cache2.size() - hs, cache.data(), cache.size(), nullptr);
+						std::string text;
+						channelCfg.signalProperties.toString(text, consumerPtr, consumerSize, sig::SignalStage::Consumer);
+						spdlog::debug("P{}, Signal data ({} bytes) from transformer for {}: {}\n", header.packetId, consumerSize, channelCfg.name, text.c_str());
+						fn_process_signal_data(consumerPtr, consumerSize, header);
 					}
 
-					spdlog::trace("Packet {} outgoing via {}", header.packetId, __FUNCTION__);
-					if (channelCfg.signalProperties.isReflexive)
-					{
-						if (fn_process_signal_data)
-						{
-							std::string text;
-							channelCfg.signalProperties.toString(text, consumerPtr, consumerSize, sig::SignalStage::Consumer);
-							spdlog::debug("P{}, Signal data ({} bytes) from transformer for {}: {}\n", header.packetId, consumerSize, channelCfg.name, text.c_str());
-							fn_process_signal_data(consumerPtr, consumerSize, header);
+					if (channelCfg.transformer_to_local_client) {
+						spdlog::debug("Sending transformer packet {} to {} local consumers", header.packetId, channelCfg.consumers.size());
+						for (auto& consumer : channelCfg.consumers) {
+							consumer->fnProcessSignalData(consumerPtr, consumerSize, header);
 						}
-
-						if (channelCfg.transformer_to_local_client) {
-							spdlog::debug("Sending transformer packet {} to {} local consumers", header.packetId, channelCfg.consumers.size());
-							for (auto& consumer : channelCfg.consumers) {
-								consumer->fnProcessSignalData(consumerPtr, consumerSize, header);
-							}
-						}
-						else {
-							spdlog::debug("Transformed packet {} not going to {} consumers!", header.packetId, channelCfg.name);
-
-						}
-
-						// Currently, lets not have transformers sending information to themselves
-						/*
-						for (auto& transformer : channelCfg.transformer_inputs) {
-							transformer->fnProcessSignalData(consumerPtr, consumerSize, header);
-						}
-						*/
+					}
+					else {
+						spdlog::debug("Transformed packet {} not going to {} consumers!", header.packetId, channelCfg.name);
 
 					}
+
+					// Currently, lets not have transformers sending information to themselves
+					/*
+					for (auto& transformer : channelCfg.transformer_inputs) {
+						transformer->fnProcessSignalData(consumerPtr, consumerSize, header);
+					}
+					*/
+
 				}
 			}
-
-			if (request_data && (channelCfg.transformer_output != nullptr))
-			{			
-				spdlog::debug("Submitting transformer thread to pool");
-				auto& getDataFn = channelCfg.transformer_output->fnGetSignalData;
-				transformer_future = signal_producer_thread_pool.submit_task(
-					[getDataFn, &cache, &signal_time] {
-						return getDataFn((uint8_t*)(cache.data() + hs), std::ref(signal_time));
-					}
-				);
-			}
-
 		}
 	}
+
+
 
 	void ClientState::_process_outgoing_signal(SignalType signalType, std::vector<net::SignalData>& signalData)
 	{
 		if (signalType == SignalType::Control) {
 			spdlog::error("_process_outgoing_signal has bogus signaltype {}", (int)signalType);
+			return;
 		}
 
+		
 		for (int sigIdx = 0; sigIdx < signalData.size(); ++sigIdx)
 		{
-			spdlog::trace("Outgoing signal with index {} and type {}", sigIdx, (int)signalType);
-			auto& cache = caches_mt[sigIdx];
-			auto& cache2 = caches2_mt[sigIdx];
+			spdlog::debug("Outgoing signal with index {} and type {}", sigIdx, (int)signalType);
+			auto& cache = (signalType == SignalType::Environment) ? caches_env_mt[sigIdx] : caches_mt[sigIdx];
+			auto& cache2 = (signalType == SignalType::Environment) ? caches2_env_mt[sigIdx] : caches2_mt[sigIdx];
+
 			const auto& channelCfg = scene_runtime_data.SignalConfigFromIndexAndType(sigIdx, signalType);
 			// Allocate cache memory, with enough to support a header in front
 			const int hs = sizeof(sig::SignalMetadata);
@@ -478,12 +555,11 @@ namespace net
 			auto& signal_time = time_points_mt[sigIdx];
 			//std::fill(cache.begin(), cache.end(), 0);
 
-			auto& producer_future = producer_futures[sigIdx];
+			auto& producer_future = (signalType == SignalType::Environment)? env_producer_futures[sigIdx] : producer_futures[sigIdx];
 			//auto& transformer_future = transformer_futures[sigIdx];
 
 			bool request_data = false; // should we spawn a task to request data?
 			bool process_data = false; // do we have valid data to process?
-
 
 			// if the data is completely invalid, we need to request new data
 			if (!producer_future.valid())
@@ -496,7 +572,7 @@ namespace net
 				request_data = true;
 				process_data = true;
 			}
-
+			
 			// First process the data
 			if (process_data)
 			{
@@ -536,10 +612,25 @@ namespace net
 						cache.resize(numBytesRead + hs);
 					}
 
-					const auto& packetVec = channelCfg.signalProperties.isPassthru ? cache : cache2;
 
+					spdlog::trace("Producer, sigIdx {}, signal size {}, sigData size {} received without metadata", sigIdx, numBytesRead, stateData.size());
+					const auto& packetVec = channelCfg.signalProperties.isPassthru ? cache : cache2;
+					/*
+					if (signalType == SignalType::Client) {
+						if (numBytesRead > 64) {
+							std::stringstream ss = std::stringstream("");
+							ss << std::hex;
+
+							for (int i = 0; i < 64; i++) {
+								ss << (int)cache.data()[i] << " ";
+							}
+							spdlog::info("Client.cpp produce: sigdump: {}", ss.str());
+						}
+					}
+					*/
 					sig::SignalMetadata& header = *(sig::SignalMetadata*)cache.data();
 					header = sig::SignalMetadata{ signal_time, signalData[sigIdx].sentCounter++, userIdx, uint8_t(sigIdx), (uint8_t)signalType };
+			
 
 					// Telemetry for PRODUCER data
 					auto time_now = sig::time_now();
@@ -550,10 +641,16 @@ namespace net
 					RegisterPacketToTracker(header, signal_time, "SEND");
 					// send message
 					auto packet = make_packet(packetVec, channelCfg.signalProperties.isReliable);
+					
 					auto enet_channel_id = signalType == SignalType::Client ? 0 : sigIdx;
+					//auto enet_channel_id = signalType == SignalType::Client ? 0 : sigIdx;
+
+
 					auto peer_server = server_peer_per_channel[signalType == SignalType::Client ? 2 + sigIdx : 1];
 					spdlog::trace("Sending produced packet size {} as user {}\n", packet->dataLength, header.userIdx);
 					auto err = enet_peer_send(peer_server, enet_channel_id, packet);
+
+
 
 					if (err != 0)
 						spdlog::error("send_msg error!");
@@ -565,6 +662,7 @@ namespace net
 					if (!channelCfg.signalProperties.isPassthru)
 					{
 						cache.resize(channelCfg.signalProperties.consumerFormMaxSize);
+
 						consumerSize = channelCfg.signalProperties.networkToConsumer(cache2.data() + hs, cache2.size() - hs, cache.data(), cache.size(), nullptr);
 					}
 
@@ -572,16 +670,16 @@ namespace net
 
 					if (channelCfg.signalProperties.isReflexive)
 					{
-						if (fn_process_signal_data)
+						if (fn_process_signal_data && (!channelCfg.transformed_input_only))
 						{
 							std::string text;
 							channelCfg.signalProperties.toString(text, consumerPtr, consumerSize, sig::SignalStage::Consumer);
-							spdlog::trace("Signal data ({} bytes) from producer for {}: {}\n", consumerSize, channelCfg.name, text.c_str());
+							spdlog::trace("client.cpp: Signal data ({} bytes) from producer for {}: {}\n", consumerSize, channelCfg.name, text.c_str());
 							fn_process_signal_data(consumerPtr, consumerSize, header);
 						}
 
 						if (!channelCfg.transformer_to_local_client) {
-							spdlog::debug("Outputing Producer packet {} of size {} to {} local consumers", header.packetId, consumerSize, channelCfg.consumers.size());
+							spdlog::trace("client.cpp:Outputing Producer packet {} of size {} to {} local consumers", header.packetId, consumerSize, channelCfg.consumers.size());
 							for (auto& consumer : channelCfg.consumers) {
 								// Transformers shouldn't be eating their own shit
 								if (!consumer->is_transformer)
@@ -590,8 +688,7 @@ namespace net
 									spdlog::debug("Possible output to a transformer in the consumer list");
 								//consumer->fnProcessSignalData(consumerPtr, consumerSize, header);
 							}
-						}
-						
+						}						
 						for (auto& transformer : channelCfg.transformer_inputs) {
 							transformer->fnProcessSignalData(consumerPtr, consumerSize, header);
 						}
@@ -601,9 +698,10 @@ namespace net
 
 				}
 			}
-			if (request_data)
+			if (request_data && channelCfg.producer > 0)
 			{
-				spdlog::debug("Sending Producer thread to pool");
+				spdlog::trace("Sending Producer thread to pool");
+				
 				auto& getDataFn = channelCfg.producer->fnGetSignalData;
 				producer_future = signal_producer_thread_pool.submit_task([getDataFn, &cache, & signal_time] {
 					return getDataFn((uint8_t*)cache.data() + hs, std::ref(signal_time) );
@@ -739,8 +837,16 @@ namespace net
 			ss << std::hex << static_cast<int>(c & 0xff) << ":";
 		}));
 		
+
+		// add the local appdata to the DLL search path so that we can put dlls there for modules to find
+
+		const char* dgap = (net::cfg::DanceGraphAppDataPath() + std::string("/modules")).c_str();
+		SetDllDirectoryA((LPCSTR) dgap);
+		spdlog::info("Adding {} to DLL search path", dgap);
 		// Make a copy of the cfg::Client for future reference
 		config = cfg;
+		
+		
 
 		if (!scene_runtime_data.Initialize(cfg.scene, cfg.role, cfg.producer_overrides, cfg.user_signal_consumers, cfg.transformers, cfg.include_ipc_consumers, true))
 		{
@@ -850,7 +956,6 @@ namespace net
 		}
 
 		send_control_msg(m, sig::time_now());
-	
 		
 		spdlog::info("There are {} server chans",server_peer_per_channel.size());
 		for (int i = 0; i < server_peer_per_channel.size(); i++) {
@@ -865,25 +970,36 @@ namespace net
 		}
 
 		// THREAD POOL INIT
-		// Initialize thread pool with how many producers we will call (one for each signal + one for each consumer)
-
-		auto num_producer_signals = net::cfg::Root::instance().scenes.at(config.scene).user_roles.at(config.role).user_signals.size(); 
+		// Initialize thread pool with how many producers we will call (one for each signal + one for each consumer) + env signals might be produced too
+		
+		auto num_producer_signals = net::cfg::Root::instance().scenes.at(config.scene).user_roles.at(config.role).user_signals.size();
+		// num_env_signals is already defined
 
 		int transformer_count = config.transformers.size();
 		spdlog::info("Transformer count is {}", transformer_count);
-		int future_count = num_producer_signals;
 		
+		int future_count = num_producer_signals;
+		int env_future_count = num_env_signals;
+
 		int trans_future_count = num_producer_signals;
 
-		signal_producer_thread_pool.reset(future_count);
+		signal_producer_thread_pool.reset(future_count + env_future_count);
+		signal_transformer_thread_pool.reset(future_count + env_future_count);
 		// initialize futures with the user signals that the scene will use (this is for easier indexing)
 		producer_futures.resize(future_count);
+
 		caches_mt.resize(future_count);
 		caches_xform_mt.resize(trans_future_count);
 
 		caches2_xform_mt.resize(trans_future_count);
 		caches2_mt.resize(future_count);
 
+		env_producer_futures.resize(env_future_count);
+		caches_env_mt.resize(future_count);
+		caches_env_xform_mt.resize(trans_future_count);
+
+		caches2_env_xform_mt.resize(trans_future_count);
+		caches2_env_mt.resize(future_count);
 
 		time_points_mt.resize(future_count);
 

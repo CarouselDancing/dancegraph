@@ -132,6 +132,18 @@ namespace zed
         return quant_quat{ qx, qy, qz };
     }
 
+    std::ostream& operator<<(std::ostream& os, const vec3& c) {
+        return os << "[ " << c.x << ", " << c.y << ", " << c.z << "\n";
+
+    }
+    std::ostream& operator<<(std::ostream& os, const quat& c) {
+        return os << "{ " << c.x << ", " << c.y << ", " << c.z << ", " << c.w << "}";
+
+    }
+    std::ostream& operator<<(std::ostream& os, const quant_quat& c) {
+        return os << "[ " << c.x << ", " << c.y << ", " << c.z << "\n";
+    }
+
     const std::string xform_quant::str() const {
         std::stringstream ss;
         ss << pos.str() << " " << ori.unquantize().str();
@@ -155,11 +167,11 @@ namespace zed
     }
 
 
-    quat operator + (const quat & a, const quat & b) {
+    quat operator + (const quat& a, const quat& b) {
         return (quat{ a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w });
     }
 
-    quat operator - (const quat &a, const quat &b) {
+    quat operator - (const quat& a, const quat& b) {
         return (quat{ a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w });
     }
 
@@ -174,6 +186,14 @@ namespace zed
     float dot(const quat& a, const quat& b) {
         return (a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
     }
+
+    vec3 cross(const vec3& a, const vec3& b) {
+        float x = a.y * b.z - a.z * b.y;
+        float y = a.z * b.x - a.x * b.z;
+        float z = a.x * b.y - a.y * b.x;
+        return vec3(x, y, z);
+    }
+
 
     quat operator * (const quat& a, const quat& b) {
         float nw = -a.x * b.x - a.y * b.y - a.z * b.z + a.w * b.w;
@@ -202,6 +222,9 @@ namespace zed
 
         return vec3{ nx, ny, nz };
     }
+
+
+
 
     quat quat::inv() const {
         return quat{ -x, -y, -z, w };
@@ -234,6 +257,8 @@ namespace zed
     }
 
 
+    std::array<BODY_34_PARTS, NUM_BONES_FULL_34> ZedSkeletonKPRot_34::parent_list = std::array<BODY_34_PARTS, NUM_BONES_FULL_34>();
+
     quant_quat slerp(const quant_quat& a, const quant_quat& b, float t) {
         quat qa = a.unquantize();
         quat qb = b.unquantize();
@@ -241,7 +266,7 @@ namespace zed
         return c.quantize();
     }
 
-    
+
     int BufferProperties::signalSize() {
         int sigSize;
         switch (bodySignalType) {
@@ -262,37 +287,35 @@ namespace zed
         return sigSize;
     }
 
-    // TODO: Refactor this tree recursion so that it's only written once!
-    /*
-    void ZedSkeletonKPRot_34::recurse_tree(BODY_34_PARTS curBone,
-        quat rotation,
+    void ZedSkeletonKPRot_34::recurse_tree(std::array<vec3, NUM_BONES_FULL_34> & output_kp,
+        BODY_34_PARTS curBone, quat rot, quat unrot,
         BODY_34_PARTS parBone,
-        std::array<vec3, NUM_BONES_FULL_34> &keypoints_in,
-        std::array<quat, NUM_BONES_FULL_34> &antirots,
-        std::array<quat, NUM_BONES_FULL_34> &rots) {
+        const std::array<vec3, NUM_BONES_FULL_34>& keypoints_in,
+        const std::array<quat, NUM_BONES_FULL_34>& antirots,
+        const std::array<quat, NUM_BONES_FULL_34>& rots) {
 
         int bIdx = (int)curBone;
         int pIdx = (int)parBone;
 
-        quat newRot;        
+        quat newUnrot;
+        quat newRot;
+
         if (parBone == BODY_34_PARTS::LAST) {
-            // Root bone with no parent
-            newRot = rotation;
-            spdlog::trace("Bone {} has no parent. Passthrough rotation {}, keypoints: from: {}, to: {}", bIdx, newRot.str(), bone_keypoints[bIdx].str(), keypoints_in[bIdx].str());
-            bone_keypoints[bIdx] = root_transform.pos;
+            newRot = rot;
+            newUnrot = unrot;
+            output_kp[bIdx] = root_transform.pos;
 
         }
-            
         else {
-            newRot = rotation * antirots[pIdx];
-            bone_keypoints[bIdx] = bone_keypoints[pIdx] + rots[bIdx] * newRot.inv() * (keypoints_in[bIdx] - keypoints_in[pIdx]);
+            newRot = rot * rots[pIdx];
+            newUnrot = unrot * antirots[pIdx];
+            output_kp[bIdx] = output_kp[pIdx] + newRot * newUnrot.inv() * (keypoints_in[bIdx] - keypoints_in[pIdx]);
         }
 
         for (auto& childbone : body_34_tree[bIdx]) {
-            recurse_tree(childbone, newRot, curBone, keypoints_in, antirots, rots);
+            recurse_tree(output_kp, childbone, newRot, newUnrot, curBone, keypoints_in, antirots, rots);
         }
     }
-    */
 
 
     void ZedSkeletonKPRot_34::recurse_tree(BODY_34_PARTS curBone, quat rot, quat unrot,
@@ -300,6 +323,7 @@ namespace zed
         const std::array<vec3, NUM_BONES_FULL_34>& keypoints_in,
         const std::array<quat, NUM_BONES_FULL_34>& antirots,
         const std::array<quat, NUM_BONES_FULL_34>& rots) {
+
         int bIdx = (int)curBone;
         int pIdx = (int)parBone;
 
@@ -322,16 +346,23 @@ namespace zed
             recurse_tree(childbone, newRot, newUnrot, curBone, keypoints_in, antirots, rots);
         }
     }
-    
+
+
+
+
+
+
+
     // Takes an existing skeleton's keypoints and rotations, and the new set of rotations and calculates a new set of keypoint positions
     // By unrolling the old rotations and rerolling the new ones
 
-    void ZedSkeletonKPRot_34::calculate_keypoints(const ZedSkeletonKPRot_34 & old_skel,
-        const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations) {
+    void ZedSkeletonKPRot_34::calculate_keypoints(const ZedSkeletonKPRot_34& old_skel,
+        const std::array<quant_quat, NUM_BONES_COMPACT_34>& new_rotations, bool populate_rotations)
+    {
 
         static std::array<quat, NUM_BONES_FULL_34> urots; // New rotations
         static std::array<quat, NUM_BONES_FULL_34> antirots; // Unpack the current rotations, so we can redo them
-
+        spdlog::debug("Recalculating keypoints from rotations");
 
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             urots[i] = quat{ 0, 0, 0, 1 };
@@ -354,18 +385,26 @@ namespace zed
             old_skel.bone_keypoints,
             antirots,
             urots);
-   }
+
+
+        if (populate_rotations) {
+            for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+                bone_rotations[i] = new_rotations[i];
+            }
+        }
+    }
 
 
 
-
-    void ZedSkeletonKPRot_34::calculate_keypoints(std::array<quant_quat, NUM_BONES_COMPACT_34>& rotations, bool reset) {
+    void ZedSkeletonKPRot_34::calculate_keypoints(const std::array<quant_quat, NUM_BONES_COMPACT_34>& rotations, bool populate_rotations, bool reset) {
 
         // Unpacked rotations into full quaternions
         // TODO: Check if we can initialize these to {0,0,0,1} and exploit the staticity to shave off a fraction of a microsecond
         static std::array<quat, NUM_BONES_FULL_34> urots; // New rotations
         static std::array<quat, NUM_BONES_FULL_34> antirots; // Unpack the current rotations, so we can redo them
         static std::array<vec3, NUM_BONES_FULL_34> keypoints_in; // A temporary copy of the input keypoints
+
+        spdlog::debug("Reset version keypoint calculator for KPRot_34");
 
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             urots[i] = quat{ 0, 0, 0, 1 };
@@ -379,11 +418,13 @@ namespace zed
             }
         }
         else {
-            for (int i = 0; i < NUM_BONES_COMPACT_34; i++)
-            urots[i] = quat{ 0, 0, 0, 1 };
-
+            /*
+                        // Isn't this redundant?
+                        for (int i = 0; i < NUM_BONES_COMPACT_34; i++)
+                        urots[BONELIST_34_COMPACT[i]] = quat{ 0, 0, 0, 1 };
+            */
         }
-            
+
         for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
             antirots[BONELIST_34_COMPACT[i]] = bone_rotations[i].unquantize();
         }
@@ -392,61 +433,165 @@ namespace zed
             keypoints_in[i] = bone_keypoints[i];
         }
 
-        spdlog::info("Root transform quaternion: {}", root_transform.ori.unquantize().str());        
+        spdlog::trace("Root transform quaternion: {}", root_transform.ori.unquantize().str());
         std::stringstream ss = std::stringstream();
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             ss << "[" << antirots[i].str() << "] ";
         }
 
-        spdlog::info("Rots before recurse, (rval {}), = : {}", (reset ? std::string("true") : std::string("false")), ss.str());
+        spdlog::debug("Rots before recurse, (rval {}), = : {}", (reset ? std::string("true") : std::string("false")), ss.str());
 
         ss.str("");
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             ss << "[" << keypoints_in[i].str() << "] ";
         }
-        
-        spdlog::info("Before recurse: {}", ss.str());
+
+        spdlog::debug("Before recurse: {}", ss.str());
         recurse_tree(BODY_34_PARTS::PELVIS, root_transform.ori.unquantize(), root_transform.ori.unquantize(), BODY_34_PARTS::LAST, keypoints_in, antirots, urots);
         //recurse_tree(BODY_34_PARTS::PELVIS, quat{0, 0, 0, 1}, BODY_34_PARTS::LAST, keypoints_in, antirots, urots);
+
+        if (populate_rotations) {
+            for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+                bone_rotations[i] = rotations[i];
+            }
+        }
+
+
+        ss.str("");
+        for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+            ss << "[" << bone_rotations[i].str() << "] ";
+        }
+        spdlog::debug("Rots After recurse: {}", ss.str());
+
+
 
         ss.str("");
         for (int i = 0; i < NUM_BONES_FULL_34; i++) {
             ss << "[" << bone_keypoints[i].str() << "] ";
         }
-        spdlog::info("After recurse: {}", ss.str());
+
+        spdlog::debug("After recurse: {}", ss.str());
+
+    }
+
+    void ZedSkeletonKPRot_34::calculate_keypoints(std::array<vec3, NUM_BONES_FULL_34> & output_keypoints, const std::array<quat, NUM_BONES_FULL_34>& urots,bool populate_rotations, bool reset) {
+
+        // Unpacked rotations into full quaternions
+        // TODO: Check if we can initialize these to {0,0,0,1} and exploit the staticity to shave off a fraction of a microsecond
+        //static std::array<quat, NUM_BONES_FULL_34> urots; // New rotations
+        static std::array<quat, NUM_BONES_FULL_34> antirots; // Unpack the current rotations, so we can redo them
+        static std::array<vec3, NUM_BONES_FULL_34> keypoints_in; // A temporary copy of the input keypoints
+
+        std::array<quat, NUM_BONES_FULL_34> new_rots;
+
+        spdlog::debug("Reset version keypoint calculator for KPRot_34");
+
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            antirots[i] = quat{ 0, 0, 0, 1 };
+        }
+
+        if (reset) {                       
+            // Set urots to quat {0,0,0,1} here
+            for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+                new_rots[i] = quat{ 0, 0, 0, 1 };
+            }
+        }
+        else{
+            for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+                new_rots[i] = urots[i];
+            }
+        }
+
+
+        for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+            antirots[BONELIST_34_COMPACT[i]] = bone_rotations[i].unquantize();
+        }
+
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            keypoints_in[i] = bone_keypoints[i];
+        }
+
+        spdlog::trace("Root transform quaternion: {}", root_transform.ori.unquantize().str());
+        std::stringstream ss = std::stringstream();
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            ss << "[" << antirots[i].str() << "] ";
+        }
+
+        spdlog::debug("Rots before recurse, (rval {}), = : {}", (reset ? std::string("true") : std::string("false")), ss.str());
+
+        ss.str("");
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            ss << "[" << keypoints_in[i].str() << "] ";
+        }
+
+        spdlog::debug("Before recurse: {}", ss.str());
+        recurse_tree(output_keypoints, BODY_34_PARTS::PELVIS, root_transform.ori.unquantize(), root_transform.ori.unquantize(), BODY_34_PARTS::LAST, keypoints_in, antirots, new_rots);
+        //recurse_tree(BODY_34_PARTS::PELVIS, quat{0, 0, 0, 1}, root_transform.ori.unquantize(), BODY_34_PARTS::LAST, keypoints_in, antirots, urots);
+
+        ss.str("");
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            ss << "[" << output_keypoints[i].str() << "] ";
+        }
+
+
+        spdlog::debug("After recurse: {}", ss.str());
+
+        if (populate_rotations) {
+            for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+                bone_rotations[i] = urots[BONELIST_34_COMPACT[i]].quantize();
+            }
+        }
+
+
+        ss.str("");
+        for (int i = 0; i < NUM_BONES_COMPACT_34; i++) {
+            ss << "[" << bone_rotations[i].str() << "] ";
+        }
+        spdlog::debug("Rots After recurse: {}", ss.str());
+    }
+
+
+    void ZedSkeletonKPRot_34::calculate_keypoints(const std::array<quat, NUM_BONES_FULL_34>& urots, bool populate_rotations, bool reset) {
+        calculate_keypoints(bone_keypoints, urots, populate_rotations, reset);
 
     }
 
 
-    void ZedSkeletonKPRot_34::reset_keypoints() {
-        calculate_keypoints(bone_rotations, true);
+
+
+    void ZedSkeletonKPRot_34::reset_keypoints(bool populate_rotations) {
+        calculate_keypoints(bone_rotations, populate_rotations, true);
     }
 
     void ZedSkeletonKPRot_38::recurse_tree(BODY_38_PARTS curBone,
-        quat rotation,
+        quat rot,
+        quat unrot,
         BODY_38_PARTS parBone,
-        std::array<vec3, NUM_BONES_FULL_38>& keypoints_in,
-        std::array<quat, NUM_BONES_FULL_38>& antirots,
-        std::array<quat, NUM_BONES_FULL_38>& rots) {
+        const std::array<vec3, NUM_BONES_FULL_38>& keypoints_in,
+        const std::array<quat, NUM_BONES_FULL_38>& antirots,
+        const std::array<quat, NUM_BONES_FULL_38>& rots) {
 
         int bIdx = (int)curBone;
         int pIdx = (int)parBone;
 
         quat newRot;
+        quat newUnrot;
+
         if (parBone == BODY_38_PARTS::LAST) {
-            // Root bone with no parent
-            newRot = rotation;
-            //spdlog::info("Bone {} has no parent. Passthrough rotation {}, keypoints: from: {}, to: {}", bIdx, newRot.str(), bone_keypoints[bIdx].str(), keypoints_in[bIdx].str());
+
+            newRot = rot;
+            newUnrot = unrot;
             bone_keypoints[bIdx] = root_transform.pos;
         }
 
         else {
-            newRot = rotation * antirots[pIdx];
-            bone_keypoints[bIdx] = bone_keypoints[pIdx] + rots[bIdx] * newRot.inv() * (keypoints_in[bIdx] - keypoints_in[pIdx]);
+            newRot = rot * rots[pIdx];
+            newUnrot = unrot * antirots[pIdx];
+            bone_keypoints[bIdx] = bone_keypoints[pIdx] + newRot * newUnrot.inv() * (keypoints_in[bIdx] - keypoints_in[pIdx]);            
         }
 
         for (auto& childbone : body_38_tree[bIdx]) {
-            recurse_tree(childbone, newRot, curBone, keypoints_in, antirots, rots);
+            recurse_tree(childbone, newRot, newUnrot, curBone, keypoints_in, antirots, rots);
         }
     }
 
@@ -494,7 +639,7 @@ namespace zed
         }
 
         spdlog::trace("Before recurse: {}", ss.str());
-        recurse_tree(BODY_38_PARTS::PELVIS, root_transform.ori.unquantize(), BODY_38_PARTS::LAST, keypoints_in, antirots, urots);
+        recurse_tree(BODY_38_PARTS::PELVIS, root_transform.ori.unquantize(), root_transform.ori.unquantize(), BODY_38_PARTS::LAST, keypoints_in, antirots, urots);
         
 
         ss.str("");
@@ -502,6 +647,8 @@ namespace zed
             ss << "[" << bone_keypoints[i].str() << "] ";
         }
         spdlog::trace("After recurse: {}", ss.str());
+
+
 
     }
 
@@ -516,30 +663,129 @@ namespace zed
         static std::array<quat, NUM_BONES_FULL_38> urots; // New rotations
         static std::array<quat, NUM_BONES_FULL_38> antirots; // Unpack the current rotations, so we can redo them
 
-        for (int i = 0; i < NUM_BONES_COMPACT_38; i++) {
-            antirots[BONELIST_38_COMPACT[i]] = bone_rotations[i].unquantize();
-        }
-
         for (int i = 0; i < NUM_BONES_FULL_38; i++) {
             urots[i] = quat{ 0, 0, 0, 1 };
             antirots[i] = quat{ 0, 0, 0, 1 };
         }
 
         for (int i = 0; i < NUM_BONES_COMPACT_38; i++) {
+            antirots[BONELIST_38_COMPACT[i]] = bone_rotations[i].unquantize();
+        }
+
+        for (int i = 0; i < NUM_BONES_COMPACT_38; i++) {
             urots[BONELIST_38_COMPACT[i]] = new_rotations[i].unquantize();
         }
 
-        /*
+        
         recurse_tree(BODY_38_PARTS::PELVIS,
             old_skel.root_transform.ori.unquantize(),
             old_skel.root_transform.ori.unquantize(),
             BODY_38_PARTS::LAST,
             old_skel.bone_keypoints,
             antirots,
-            urots);
-            */
+            urots);            
     }
 
+    void ZedSkeletonKPRot_34::get_bone_path(std::vector<BODY_34_PARTS> & parts, BODY_34_PARTS from, BODY_34_PARTS to) {
+        parts.push_back(to);
+        
+        BODY_34_PARTS current = to;
+        
+        while(current != BODY_34_PARTS::LAST) {
+            BODY_34_PARTS pParent = parent_list[(int)current];
+            parts.push_back(current);
+
+            if (current == from) {
+                return;
+            }
+            current = pParent;
+        }
+        
+        // We hit the root bone. Append the reverse of the bone going the other way
+
+        std::vector<BODY_34_PARTS> rev_parts = std::vector<BODY_34_PARTS>();
+        get_bone_path(rev_parts, BODY_34_PARTS::PELVIS, from);
+        std::reverse(rev_parts.begin(), rev_parts.end());        
+        parts.insert(parts.end(), rev_parts.begin(), rev_parts.end());
+
+    }
+
+
+
+    quat ZedSkeletonKPRot_34::rotate_towards(const vec3& effector, const vec3& pivot_pt, const vec3& end_pt) {
+        vec3 target_vec = effector - pivot_pt;
+        vec3 cur_vec = end_pt - pivot_pt;
+
+        vec3 axis = cross(cur_vec, target_vec);
+        float mag = sqrt(dot(axis, axis));
+
+        float angle = atan2(mag, dot(target_vec, cur_vec));
+
+        float shalf = sin(angle / 2.0);
+        float chalf = cos(angle / 2.0);
+
+        vec3 ax_sc = axis.scale(shalf / mag);
+        quat q = quat(ax_sc.x, ax_sc.y, ax_sc.z, chalf);
+        return q;
+    }
+
+
+    // TODO: Make a faster version that only unrolls the globals we need
+    void ZedSkeletonKPRot_34::recurse_full_globals(BODY_34_PARTS cur_bone,
+        BODY_34_PARTS par_bone,
+        quat rot,
+        std::array<quat, NUM_BONES_FULL_34>& global_rots,
+        const std::array<quat, NUM_BONES_FULL_34>& rots) {
+
+
+        int bIdx = (int)cur_bone;
+        int pIdx = (int)par_bone;
+        
+        quat newRot;
+
+        if (par_bone == BODY_34_PARTS::LAST) {
+            return;
+        }
+
+        else {
+            newRot = rot * rots[pIdx];
+            global_rots[bIdx] = newRot;
+        }
+
+        for (auto& childbone : body_34_tree[bIdx]) {
+            recurse_full_globals(childbone, cur_bone,  newRot, global_rots, rots);
+        }
+    }
+
+    void ZedSkeletonKPRot_34::calculate_parents() {
+        
+        parent_list[0] = BODY_34_PARTS::LAST;
+        for (int i = 0; i < NUM_BONES_FULL_34; i++) {
+            auto childlist = body_34_tree[i];
+            for (auto c : childlist) {
+                parent_list[(int)c] = (BODY_34_PARTS)i;
+            }
+        }
+    }
+
+    // Calculates the world-space rotations for the selected path of bones    
+    void ZedSkeletonKPRot_34::calculate_global_rotations(std::array<quat, NUM_BONES_FULL_34>& new_rotations,
+        BODY_34_PARTS start_bone,
+        const std::array<quat, NUM_BONES_FULL_34>& local_rotations) {
+
+        for (int i = 0; i < NUM_BONES_FULL_38; i++) {
+            new_rotations[i] = quat{ 0,0,0,1 };
+        }
+
+        recurse_full_globals(start_bone,
+            BODY_34_PARTS::LAST,
+            quat{0,0,0,1},
+            new_rotations,
+            local_rotations);
+    
+    }
+
+    
 
 
 }

@@ -66,7 +66,8 @@ namespace ipc {
 	}
 
 	void IPCConsumer::shutdown() {
-		delete[] assembly_buffer;
+		if (assembly_buffer != nullptr)
+			delete[] assembly_buffer;
 	}
 
 	

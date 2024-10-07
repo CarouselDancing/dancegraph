@@ -244,7 +244,7 @@ namespace dll
 			}));
 		}
 
-		DGRAPH_API void GetLastDanceGraphError(char * strptr, unsigned int len) {
+		DGRAPH_API void GetLastDanceGraphError(char * strptr, int len) {
 
 			unsigned int minval = (len < MAX_ERROR_STRING_LENGTH) ? len : MAX_ERROR_STRING_LENGTH;
 			strncpy(strptr, last_error, minval);			

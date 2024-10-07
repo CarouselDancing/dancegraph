@@ -158,6 +158,11 @@ namespace net
 		return s;
 	}
 
+	void EnvState::reset_user_state(int i) {
+		userStates[i] = EnvUserState{};
+	}
+
+
 	void WorldState::on_connection_info(const sig::SignalMetadata& header, const msg::ConnectionInfo& ci, int numUserSignals)
 	{
 		spdlog::info("Registering client {} with name {}\n", header.userIdx, ci.name.data());
@@ -184,7 +189,8 @@ namespace net
 		for (const auto& client : clients)
 			s += client.to_string();
 		s += fmt::format("Environment: {}\n", environment.to_string());
-		return s;
-		
+		return s;		
 	}
+
+
 }

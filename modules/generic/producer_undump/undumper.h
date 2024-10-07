@@ -31,7 +31,7 @@ namespace dll {
 
 		bool initialize(sig::SignalProperties & sigProp);
 
-		Undumper(std::string fname);
+		Undumper(std::string fname, bool loop);
 		~Undumper();
 
 		bool read_data_from_file_v01(ifstream& df);
@@ -43,7 +43,9 @@ namespace dll {
 		int frame_size;
 		int data_size;
 		std::string save_version;
+		bool loop;
 
+		int fakePacketId;
 
 	protected:
 		

@@ -70,7 +70,7 @@ namespace dll {
 		}
 
 		for (int i = 0; i < fullsize; i++) {
-			nullbodies->skeletons[0].bone_keypoints[i] = T::tpose_position(i);
+			nullbodies->skeletons[0].bone_keypoints[i] = SDK_TO_UNITY_SCALE * T::tpose_position(i);
 		}
 
 		return ZedBodies<T>::size(nullbodies->num_skeletons);

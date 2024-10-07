@@ -117,49 +117,7 @@ namespace net
 
 		return lib;
 	}
-/*
-		const net::cfg::SignalModule* module_ptr = nullptr;
-		const net::cfg::Signal* signal_ptr = nullptr;
 
-		spdlog::info("Loading signal lib for {}", signal_name);
-		if (parts[0] == "generic")
-		{
-			if (parts.size() != 3) {
-				spdlog::error("Config error: {} is incorrect", signal_name);
-
-			}
-			assert(parts.size() == 3);
-			try {
-				signal_ptr = &versioned_signal_map.at(parts[1]).at(parts[2]);
-			}
-			catch (std::exception e) {
-				spdlog::error("Can't find signal module {}", signal_name);
-			}
-		}
-		else
-		{
-			if (parts.size() != 1) {
-				spdlog::error("Config error: {} is incorrect", signal_name);
-			}
-			assert(parts.size() == 1);
-			try {
-				signal_ptr = &module_signals.at(signal_name);
-			}
-			catch (std::exception e) {
-				spdlog::error("Can't find signal module {}", signal_name);
-				return {};
-			}
-		}
-
-		// add library-specific properties and load the signal
-		const auto signal_lib_filename = master_cfg.make_library_filename(signal_ptr->dll);
-		auto lib = std::make_shared<T>(signal_lib_filename.c_str());
-		if (!lib->is_initialized())
-			return {};
-		//j = signal_ptr->opts;
-
-		return lib;
-		*/
 
 
 	bool SignalConfig::Initialize(const std::string& signal, const cfg::RuntimeSignal& producer_rt, 
@@ -288,14 +246,17 @@ namespace net
 			sig::SignalConsumerRuntimeConfig rtcfg;
 			rtcfg.producer_name = producer_name;
 			rtcfg.producer_type = signal;			
+			
+			spdlog::debug("Pre-Xform Signal Properties Index: {}", signalProperties.signalIndex);
 			transformer->fnSignalConsumerInitialize(signalProperties, rtcfg);
+			spdlog::debug("Post-Xform Signal Properties Index: {}", signalProperties.signalIndex);
 
 			const char * tname = transformer->fnGetName();
 			spdlog::error("Got tname {}", tname);
 			int queue_size;
 			std::vector<std::string> tpair;
 			try {
-				
+				 
 				tpair = string_split(tname, '/');
 				if (tpair.size() < 2) {
 					spdlog::warn("Can't split transformer name {}", tname);
@@ -304,13 +265,18 @@ namespace net
 
 				queue_size = master_cfg.transformers.at(tpair[0]).at(tpair[1]).opts.at(signal).at("signal_queue_size");
 			}
-			catch(json::exception e) {
+			catch(const json::exception & e) {
 				spdlog::warn("Transformer {}/{} signal_queue_size option is mandatory", tpair[0], tpair[1]);
+				return false;
+			}
+			catch (const std::exception & e) {
+				spdlog::warn("Transformer {}/{} Config read failure: {}", tpair[0], tpair[1], e.what());
 				return false;
 			}
 			net::SignalType sType = isEnvSignal ? net::SignalType::Environment : net::SignalType::Client;
 
-			spdlog::debug("Transformer signal {} registered with type {}, idx: {}, size {} and queue {}",
+			spdlog::debug("Transformer {} signal {} registered with type {}, idx: {}, size {} and queue {}",
+				tname,
 				signal,
 				(int)signalProperties.channelType,
 				signalProperties.signalIndex,
@@ -434,24 +400,35 @@ namespace net
 				auto tfout = tconfig.output;
 
 				if (user_signal_name == tfout) {
-					
+
 					transformer_output = transformers[j];
-					spdlog::debug("Connecting transformer output {} to signal {}, local flag: {}, network flag: {}", tformer.name, user_signal_name, tconfig.local_output, tconfig.network_output);
+					spdlog::debug("Connecting transformer output {} to signal {}, local flag: {}, network flag: {}, exclusivity: {}", tformer.name, user_signal_name, tconfig.local_output, tconfig.network_output, tconfig.exclusive_output);
 					it_user_signal->transformer_to_network = tconfig.network_output;
 					it_user_signal->transformer_to_local_client = tconfig.local_output;
+					it_user_signal->transformed_input_only = tconfig.exclusive_output;
+					it_user_signal->transform_multi_prod_max = tconfig.max_productions_per_tick;
+
 					int queueSize;
 
 					try {
 						queueSize = tconfig.opts.at(user_signal_name).at("signal_queue_size");
 					}
 					catch (json::exception e) {
-						spdlog::warn("Warning - transformer {} signal history queue for {} not found, defaulting to 1", tformer.name ,user_signal_name );
-						queueSize = 1;							
+						spdlog::warn("Warning - transformer {} signal history queue for {} not found, defaulting to 1", tformer.name, user_signal_name);
+						queueSize = 1;
 					}
 
 					//spdlog::debug("Registering user signal {}  ({}, size {}) to transformer {}", user_signal_name, it_user_signal - user_signals.begin(), it_user_signal->signalProperties.consumerFormMaxSize, j);
 					//transformers[j]->signalMemory.registerSignal(user_signal_name, SignalType::Client, it_user_signal - user_signals.begin(), it_user_signal->signalProperties.networkFormMaxSize, queueSize);
 					tformer_output_set = true;
+					spdlog::info("Transformer {}; queue for signal {} set to size {}", tformer.name, user_signal_name, queueSize);
+
+					try {
+						it_user_signal->transform_includes_metadata = tconfig.metadata_passthrough;
+					}
+					catch(std::exception e) {
+						it_user_signal->transform_includes_metadata = false;
+					}				
 				}
 				auto siglist = master_cfg.transformers.at(tfs[0]).at(tfs[1]).user_inputs;
 				for (auto e_inp : siglist) {
@@ -613,7 +590,6 @@ namespace net
 
 		// Loads the transformers into memory and stashes them in SceneRuntimeData in order to be referred to by other signals
 		for (auto& tform : tform_list) {
-			
 
 			auto tnamep = string_split(tform.name, '/');
 			if (tnamep.size() != 2) {
@@ -633,12 +609,14 @@ namespace net
 			}
 
 			catch (std::exception e) {
-				spdlog::critical("Transformer {} not loadable",tform.name);
+				spdlog::critical("Transformer {} not loadable: {}",tform.name, e.what());
 				return false;
 
 			}
 		}
 		
+		
+
 		return true;
 	}
 
@@ -660,7 +638,8 @@ namespace net
 			auto env_inputs = master_cfg.transformers.at(tnamep[0]).at(tnamep[1]).env_inputs;
 			auto user_inputs = master_cfg.transformers.at(tnamep[0]).at(tnamep[1]).user_inputs;
 			auto output = master_cfg.transformers.at(tnamep[0]).at(tnamep[1]).output;
-
+			
+			
 		}
 
 		return true;
@@ -735,6 +714,16 @@ namespace net
 		}
 		else
 			return false;
+	}
+
+	void SceneRuntimeData::BroadcastLocalUserIndex(uint16_t idx) {
+		// Currently just calls the transformer 'setlocaluser' function
+
+		for (auto t : transformers) {
+			t->fnSetLocalUserIdx(idx);
+		}
+
+
 	}
 
 

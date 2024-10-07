@@ -15,10 +15,9 @@ namespace sig {
 		bool _lockedForRead;
 		bool _dataSinceLock;
 
-		int max_queue_size;
-		
-
 	public:
+
+		int max_queue_size;
 
 		// We only want to access the last maxSize elements
 
@@ -61,7 +60,7 @@ namespace sig {
 
 		int get_history_size(std::string signalName);
 
-		void registerSignal(std::string signalName, net::SignalType sigType, int sigIdx, int signalSize, int queueSize);
+
 
 		sig::SignalHistory * get_history(std::string name);
 
@@ -70,6 +69,9 @@ namespace sig {
 			signal_memories_user = std::vector<sig::SignalHistory>{};
 			signal_memories_env = std::vector<sig::SignalHistory>{};
 		}
+	public:
+		void registerSignal(std::string signalName, net::SignalType sigType, int sigIdx, int signalSize, int queueSize);
+
 	};
 }
 

@@ -58,6 +58,10 @@ namespace net
 
 		void _process_transformer_output(SignalType signalType, std::vector<net::SignalData>& signalData);
 
+		// Updates the local user index
+		void update_local_user_index(uint16_t idx);
+
+		
 
 	protected:
 
@@ -65,7 +69,9 @@ namespace net
 		cfg::Client config;
 
 		BS::thread_pool signal_producer_thread_pool;
+		BS::thread_pool signal_transformer_thread_pool;
 		std::vector<std::future<int>> producer_futures; // results from producer calls (num bytes read)
+		std::vector<std::future<int>> env_producer_futures; // results from producer calls (num bytes read)
 		std::vector<std::future<int>> transformer_futures; // Results from producer calls to transformers. This suggests a limit of one transformer per signal (i.e. we're not chaining transformers)
 		SceneRuntimeData scene_runtime_data;
 
@@ -101,11 +107,20 @@ namespace net
 		std::vector<std::vector<uint8_t>> caches2_mt;
 		std::vector<std::vector<uint8_t>> caches2_xform_mt;
 
+		// And for environment signals
+		std::vector<std::vector<uint8_t>> caches_env_mt;
+		std::vector<std::vector<uint8_t>> caches_env_xform_mt;
+		std::vector<std::vector<uint8_t>> caches2_env_mt;
+		std::vector<std::vector<uint8_t>> caches2_env_xform_mt;
+
 		std::vector<sig::time_point> time_points_mt;
 
 		// caches used in single-threaded operations
 		std::vector<uint8_t> cache_st;
 		std::vector<uint8_t> cache2_st;
 		
+		// Transformed signals include metadata
+		bool transform_metadata = false;
+
 	};
 }

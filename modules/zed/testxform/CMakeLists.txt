@@ -25,6 +25,7 @@ add_library(zed_testxform SHARED ${ALL_SOURCE_FILES})
 set(DANCEGRAPH_MODULE_LIBNAME "test_transformer")
 
 set(OUTFILE ${CMAKE_BINARY_DIR}/bin/share/dlls/${DANCEGRAPH_MODULE}_${DANCEGRAPH_MODULE_LIBNAME}.txt)
+
 add_custom_command(
     TARGET zed_testxform POST_BUILD   
     COMMAND echo ${DANCEGRAPH_MODULE} ${DANCEGRAPH_LIBTYPE_TRANSFORMER} ${DANCEGRAPH_MODULE_LIBNAME} $<TARGET_FILE:zed_testxform> > ${OUTFILE})
